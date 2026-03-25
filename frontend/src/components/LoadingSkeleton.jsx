@@ -6,7 +6,7 @@ export default function LoadingSkeleton() {
           style={{ borderColor: 'var(--border)', borderTopColor: 'var(--green)' }} />
         <p className="font-semibold text-lg">Skapar din veckomeny</p>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Matchar erbjudanden mot recept...
+          Matchar erbjudanden mot recept — kan ta upp till 30 sekunder
         </p>
       </div>
       <div className="animate-pulse space-y-4">
