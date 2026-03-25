@@ -1,11 +1,16 @@
 """AI-driven menu optimization using Claude API."""
 
+import hashlib
 import json
 import logging
 import uuid
 from datetime import datetime
 
 import anthropic
+
+# Cache: hash of (prefs + week + offers) → WeeklyMenu
+_menu_generation_cache: dict[str, "WeeklyMenu"] = {}
+_MENU_CACHE_MAX = 50
 
 from backend.config import get_settings
 from backend.models.menu import PlannedMeal, WeeklyMenu
@@ -214,7 +219,7 @@ def format_recipes_for_prompt(recipes: list[Recipe], offers: list[Offer], match_
     scored.sort(key=lambda x: -x[2])
 
     lines = []
-    for r, matches, _ in scored[:60]:
+    for r, matches, _ in scored[:30]:
         tags = ", ".join(r.tags) if r.tags else ""
         diet = ", ".join(r.diet_labels) if r.diet_labels else ""
         key_ings = [i.name for i in r.ingredients if not i.is_pantry_staple][:5]
@@ -340,6 +345,19 @@ async def generate_menu(
     """Generate an optimized weekly menu using Claude."""
     settings = get_settings()
 
+    # Check generation cache — same prefs + same week + same offers = same menu
+    now = datetime.now()
+    cache_key = hashlib.md5(
+        f"{preferences.model_dump_json()}-{now.isocalendar()[1]}-{now.year}-{len(offers)}"
+        .encode()
+    ).hexdigest()
+
+    if cache_key in _menu_generation_cache:
+        cached = _menu_generation_cache[cache_key]
+        # Return a copy with new ID so swap tracking works independently
+        logger.info("Returning cached menu (same prefs + week)")
+        return cached.model_copy(update={"id": str(uuid.uuid4())[:8]})
+
     eligible = filter_recipes_by_preferences(recipes, preferences)
     if not eligible:
         raise ValueError("Inga recept matchar dina preferenser. Prova att ändra kostval eller ta bort ingredienser du undviker.")
@@ -352,23 +370,37 @@ async def generate_menu(
     # Identify pinned offers for response
     pinned_offers = [o for o in offers if o.id in preferences.pinned_offer_ids] if preferences.pinned_offer_ids else []
 
-    # Try AI generation, fall back to heuristic if it fails
+    # Smart fallback: use heuristic for simple requests (saves ~$0.03 per call)
+    has_complex_prefs = (
+        preferences.pinned_offer_ids
+        or preferences.time_mix
+        or preferences.lifestyle_preferences
+        or preferences.has_children
+        or preferences.budget_per_week
+    )
+
     menu_data = None
     is_fallback = False
-    try:
-        client = anthropic.AsyncAnthropic(
-            api_key=settings.anthropic_api_key,
-            timeout=30.0,
-        )
 
-        response = await client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
-            system=MENU_SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"""Veckans erbjudanden:
+    if not has_complex_prefs:
+        logger.info("Simple preferences — using fast heuristic (no AI cost)")
+        menu_data, is_fallback = generate_fallback_menu(offers, eligible, preferences)
+
+    if not menu_data:
+        try:
+            client = anthropic.AsyncAnthropic(
+                api_key=settings.anthropic_api_key,
+                timeout=30.0,
+            )
+
+            response = await client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=2000,
+                system=MENU_SYSTEM_PROMPT,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"""Veckans erbjudanden:
 {offers_text}
 
 Tillgängliga recept (sorterade efter erbjudande-matchningar):
@@ -380,18 +412,18 @@ Användarens preferenser:
 Skapa en veckomeny med {preferences.num_dinners} middagar.
 Välj recept som maximerar erbjudande-matchningar och som varierar i stil.
 Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halva").""",
-                }
-            ],
-        )
+                    }
+                ],
+            )
 
-        ai_text = response.content[0].text
-        menu_data = _parse_ai_response(ai_text)
-    except anthropic.APITimeoutError:
-        logger.warning("Claude API timeout — using fallback menu")
-    except anthropic.APIError as e:
-        logger.warning(f"Claude API error: {e} — using fallback menu")
-    except Exception as e:
-        logger.error(f"Unexpected error calling Claude: {e}", exc_info=True)
+            ai_text = response.content[0].text
+            menu_data = _parse_ai_response(ai_text)
+        except anthropic.APITimeoutError:
+            logger.warning("Claude API timeout — using fallback menu")
+        except anthropic.APIError as e:
+            logger.warning(f"Claude API error: {e} — using fallback menu")
+        except Exception as e:
+            logger.error(f"Unexpected error calling Claude: {e}", exc_info=True)
 
     if not menu_data or not menu_data.get("meals"):
         logger.info("Using fallback menu generator")
@@ -486,6 +518,12 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
         estimated_savings=estimated,
     )
 
+    # Cache the result
+    _menu_generation_cache[cache_key] = menu
+    if len(_menu_generation_cache) > _MENU_CACHE_MAX:
+        oldest_key = next(iter(_menu_generation_cache))
+        del _menu_generation_cache[oldest_key]
+
     return menu
 
 
@@ -513,11 +551,11 @@ async def swap_recipe(
     offers_text = format_offers_for_prompt(offers)
     recipes_text = format_recipes_for_prompt(eligible, offers)
 
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key, timeout=15.0)
 
     response = await client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=500,
+        model="claude-haiku-4-5-20251001",
+        max_tokens=300,
         system=SWAP_SYSTEM_PROMPT,
         messages=[
             {
