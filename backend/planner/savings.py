@@ -53,20 +53,23 @@ def estimate_ingredient_cost(
     if amount == 0:
         amount = 1.0  # Default to 1 unit if no amount specified
 
+    # Max reasonable cost per single ingredient for a family dinner
+    MAX_INGREDIENT_COST = 200.0
+
     if offer:
-        offer_cost = _calculate_offer_cost(amount, ingredient.unit, offer)
+        offer_cost = min(_calculate_offer_cost(amount, ingredient.unit, offer), MAX_INGREDIENT_COST)
         if offer.original_price:
-            regular_cost = _calculate_regular_cost(
+            regular_cost = min(_calculate_regular_cost(
                 amount, ingredient.unit, offer.original_price, offer.unit
-            )
+            ), MAX_INGREDIENT_COST * 1.5)
         else:
-            regular_cost = offer_cost * 1.3  # Assume ~30% savings if no original price
+            regular_cost = offer_cost * 1.3
         return offer_cost, regular_cost
 
     # No offer match — estimate based on category defaults
     default_price = DEFAULT_PRICES.get(ingredient.category, 25.0)
-    cost = _estimate_default_cost(amount, ingredient.unit, default_price)
-    return cost, cost  # Same cost (no savings)
+    cost = min(_estimate_default_cost(amount, ingredient.unit, default_price), MAX_INGREDIENT_COST)
+    return cost, cost
 
 
 def _calculate_offer_cost(amount: float, unit: str, offer: Offer) -> float:
@@ -75,18 +78,24 @@ def _calculate_offer_cost(amount: float, unit: str, offer: Offer) -> float:
         kg = amount * WEIGHT_PER_UNIT.get(unit, 0.001)
         return offer.offer_price * kg
     elif offer.unit == "kr/st" or offer.unit == "kr/förp":
-        # For per-piece pricing, estimate how many pieces needed
+        # For per-piece pricing, estimate how many retail packages needed
         if unit in ("g", "kg"):
-            # Assume ~500g per piece for meat/fish
-            pieces = max(1, (amount * WEIGHT_PER_UNIT.get(unit, 0.001)) / 0.5)
+            # Assume ~500g per package for meat/fish
+            kg = amount * WEIGHT_PER_UNIT.get(unit, 0.001)
+            pieces = max(1, kg / 0.5)
             return offer.offer_price * pieces
         elif unit in ("dl", "l", "ml", "cl"):
-            # Assume ~500ml per piece
             liters = amount * WEIGHT_PER_UNIT.get(unit, 0.1)
             pieces = max(1, liters / 0.5)
             return offer.offer_price * pieces
+        elif unit in ("port", "knippe"):
+            # "4 port" = typically 1 retail package
+            return offer.offer_price
+        elif unit in ("msk", "tsk", "krm", "nypa"):
+            return offer.offer_price  # 1 package covers any small amount
         else:
-            return offer.offer_price * max(1, amount)
+            # "st" — but cap at reasonable number (avoid 6 slices = 6 packages)
+            return offer.offer_price * min(max(1, amount), 2)
     elif offer.unit == "kr/l":
         liters = amount * WEIGHT_PER_UNIT.get(unit, 0.1)
         return offer.offer_price * liters
@@ -121,11 +130,19 @@ def _estimate_default_cost(amount: float, unit: str, default_price: float) -> fl
     elif unit in ("dl", "l", "ml", "cl"):
         liters = amount * WEIGHT_PER_UNIT.get(unit, 0.1)
         return default_price * max(0.1, liters)
-    elif unit in ("st", "port", "knippe"):
-        return default_price * max(1, amount)
+    elif unit == "st":
+        # 1 "st" = typically one retail item, cap at reasonable per-item price
+        return min(default_price, 40.0) * max(1, amount)
+    elif unit == "port":
+        # "4 port pommes" = one bag of frozen fries, not 4 × full price
+        return min(default_price, 15.0)
+    elif unit == "knippe":
+        return min(default_price, 25.0)
+    elif unit in ("msk", "tsk", "krm", "nypa"):
+        # Small amounts — negligible cost
+        return 1.0
     else:
-        # Small amounts (msk, tsk, krm) — negligible cost
-        return 2.0 * max(1, amount)
+        return 3.0
 
 
 def calculate_meal_cost(

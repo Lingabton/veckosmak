@@ -91,14 +91,22 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
             </div>
           </div>
 
-          {/* Compact offer count */}
-          {offer_matches && offer_matches.length > 0 && (
-            <p className="text-xs text-green-600 mt-2 font-medium">
-              {offer_matches.length} erbjudande{offer_matches.length > 1 ? 'n' : ''} matchar
-            </p>
-          )}
+          {/* Compact offer count + quick swap */}
+          <div className="flex items-center justify-between mt-2">
+            {offer_matches && offer_matches.length > 0 ? (
+              <p className="text-xs text-green-600 font-medium">
+                {offer_matches.length} erbjudande{offer_matches.length > 1 ? 'n' : ''}
+              </p>
+            ) : <span />}
+            <button
+              onClick={(e) => { e.stopPropagation(); onSwap(day, '') }}
+              disabled={swapping === day}
+              className="text-xs text-gray-400 hover:text-orange-600 transition-colors px-2 py-1 -mr-2">
+              {swapping === day ? '...' : '🔄 Byt'}
+            </button>
+          </div>
 
-          <div className="flex items-center justify-between mt-2.5">
+          <div className="flex items-center justify-between mt-1">
             <div className="text-sm">
               <span className="font-semibold" style={{ color: 'var(--accent)' }}>
                 {Math.round(estimated_cost)} kr
