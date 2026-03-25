@@ -45,9 +45,9 @@ PROCESSED_KEYWORDS = [
     "fish fingers", "panerad", "halvfabrikat", "grillkorv", "chips",
 ]
 
-# Minimum crowd rating to include in menu (skip poorly rated recipes)
-MIN_RATING_THRESHOLD = 3.0
-MIN_RATING_COUNT = 3  # Need at least this many ratings to apply threshold
+# Minimum crowd rating — only serve top-tier recipes
+MIN_RATING_THRESHOLD = 3.5
+MIN_RATING_COUNT = 5
 
 
 MENU_SYSTEM_PROMPT = """Du är en svensk menyplanerare. Din uppgift är att skapa en veckomeny

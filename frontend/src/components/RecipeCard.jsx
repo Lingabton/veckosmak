@@ -5,41 +5,18 @@ const DAY_NAMES = {
   thursday: 'Torsdag', friday: 'Fredag', saturday: 'Lördag', sunday: 'Söndag',
 }
 
-const SWAP_REASONS = [
-  { label: 'Vill ha annat', value: '' },
-  { label: 'Billigare', value: 'Vill ha ett billigare recept' },
-  { label: 'Snabbare', value: 'Vill ha ett snabbare recept' },
-  { label: 'Annan protein', value: 'Vill ha en annan proteinkälla' },
-  { label: 'Nyttigare', value: 'Vill ha ett nyttigare recept' },
-]
-
-const DIFFICULTY_LABELS = { easy: 'Enkel', medium: 'Medel', hard: 'Avancerad' }
-
 function kitchenRound(amount, unit) {
   if (amount <= 0) return 0
-  if (['dl', 'msk', 'tsk'].includes(unit)) {
-    if (amount <= 0.5) return 0.5
-    return Math.round(amount * 2) / 2
-  }
-  if (unit === 'g') {
-    if (amount < 50) return Math.round(amount / 5) * 5
-    if (amount < 500) return Math.round(amount / 25) * 25
-    return Math.round(amount / 50) * 50
-  }
-  if (unit === 'kg') return Math.round(amount * 10) / 10
+  if (['dl', 'msk', 'tsk'].includes(unit)) return amount <= 0.5 ? 0.5 : Math.round(amount * 2) / 2
+  if (unit === 'g') return amount < 50 ? Math.round(amount / 5) * 5 : amount < 500 ? Math.round(amount / 25) * 25 : Math.round(amount / 50) * 50
   return Math.round(amount * 10) / 10
 }
 
-function CrowdRating({ score, count }) {
+function Stars({ score }) {
   if (!score || score <= 0) return null
-  const full = Math.floor(score)
-  const half = score - full >= 0.3
   return (
-    <span className="inline-flex items-center gap-1 text-xs">
-      <span className="flex">{[...Array(5)].map((_, i) => (
-        <span key={i} className={i < full ? 'text-yellow-400' : (i === full && half) ? 'text-yellow-300' : 'text-gray-200'}>★</span>
-      ))}</span>
-      <span className="text-gray-400">{score.toFixed(1)}</span>
+    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+      <span className="text-amber-400">{'★'.repeat(Math.round(score))}</span> {score.toFixed(1)}
     </span>
   )
 }
@@ -47,191 +24,145 @@ function CrowdRating({ score, count }) {
 export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceExpand, index }) {
   const [expanded, setExpanded] = useState(false)
   const [feedback, setFeedback] = useState(null)
-  const { day, recipe, estimated_cost, estimated_cost_without_offers, offer_matches, scaled_servings, reasoning, popularity_score, is_fallback, mealprep_tip } = meal
+  const { day, recipe, estimated_cost, estimated_cost_without_offers, offer_matches, scaled_servings, reasoning, popularity_score, mealprep_tip } = meal
   const savings = estimated_cost_without_offers - estimated_cost
   const pricePerPortion = scaled_servings > 0 ? Math.round(estimated_cost / scaled_servings) : 0
-  const baseServings = recipe.servings || 4
-  const scale = scaled_servings / baseServings
+  const scale = scaled_servings / (recipe.servings || 4)
   const isExpanded = expanded || forceExpand
 
-  const handleFeedback = (action) => {
-    setFeedback(action)
-    onFeedback?.(day, action)
-  }
-
   return (
-    <article className={`bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm animate-fade-in stagger-${(index || 0) + 1}`}>
-      {/* Collapsed */}
+    <article className={`rounded-2xl overflow-hidden border transition-shadow hover:shadow-md animate-fade-in stagger-${(index || 0) + 1}`}
+      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+
+      {/* Image + day badge */}
       <div className="cursor-pointer" onClick={() => setExpanded(!expanded)}>
         {recipe.image_url ? (
-          <div className="h-44 overflow-hidden bg-gray-100 recipe-img-overlay">
+          <div className="h-48 overflow-hidden recipe-img-overlay">
             <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" loading="lazy" />
-            {/* Day badge on image */}
-            <div className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-semibold text-green-700 shadow-sm">
-              {DAY_NAMES[day] || day}
+            <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold"
+              style={{ color: 'var(--green-deep)' }}>
+              {DAY_NAMES[day]}
             </div>
-            {is_fallback && (
-              <div className="absolute top-3 right-3 z-10 bg-amber-100/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-xs text-amber-700">Auto</div>
-            )}
           </div>
         ) : (
-          <div className="h-20 bg-gradient-to-r from-green-50 to-green-100 flex items-center justify-center">
-            <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">{DAY_NAMES[day] || day}</span>
+          <div className="h-16 flex items-center px-5" style={{ backgroundColor: 'var(--green-soft)' }}>
+            <span className="text-sm font-semibold" style={{ color: 'var(--green-deep)' }}>{DAY_NAMES[day]}</span>
           </div>
         )}
+
         <div className="p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="font-semibold text-gray-900">{recipe.title}</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <CrowdRating score={popularity_score} count={recipe.rating_count || 0} />
-                <span className="text-xs text-gray-400">{recipe.cook_time_minutes} min</span>
-                <span className="text-xs text-gray-300">{DIFFICULTY_LABELS[recipe.difficulty]}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Compact offer count + quick swap */}
-          <div className="flex items-center justify-between mt-2">
-            {offer_matches && offer_matches.length > 0 ? (
-              <p className="text-xs text-green-600 font-medium">
-                {offer_matches.length} erbjudande{offer_matches.length > 1 ? 'n' : ''}
-              </p>
-            ) : <span />}
-            <button
-              onClick={(e) => { e.stopPropagation(); onSwap(day, '') }}
-              disabled={swapping === day}
-              className="text-xs text-gray-400 hover:text-orange-600 transition-colors px-2 py-1 -mr-2">
-              {swapping === day ? '...' : '🔄 Byt'}
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between mt-1">
-            <div className="text-sm">
-              <span className="font-semibold" style={{ color: 'var(--accent)' }}>
-                {Math.round(estimated_cost)} kr
+          <h3 className="font-semibold text-base leading-snug">{recipe.title}</h3>
+          <div className="flex items-center gap-3 mt-1.5">
+            <Stars score={popularity_score} />
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{recipe.cook_time_minutes} min</span>
+            {offer_matches?.length > 0 && (
+              <span className="text-xs font-medium" style={{ color: 'var(--green)' }}>
+                {offer_matches.length} erbjudanden
               </span>
-              <span className="text-gray-400 ml-1.5 text-xs">({pricePerPortion} kr/port)</span>
-              {savings > 1 && <span className="text-green-600 ml-1.5 text-xs font-medium">-{Math.round(savings)} kr</span>}
+            )}
+          </div>
+
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{Math.round(estimated_cost)} kr</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{pricePerPortion} kr/port</span>
+              {savings > 1 && <span className="text-xs font-medium" style={{ color: 'var(--green)' }}>−{Math.round(savings)} kr</span>}
             </div>
-            <span className="text-xs text-green-700 font-medium">{isExpanded ? 'Dölj ▲' : 'Visa ▼'}</span>
+            <div className="flex items-center gap-2">
+              <button onClick={(e) => { e.stopPropagation(); onSwap(day, '') }}
+                disabled={swapping === day}
+                className="text-xs px-2.5 py-1 rounded-full border transition-colors hover:shadow-sm"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                {swapping === day ? '...' : 'Byt'}
+              </button>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {isExpanded ? '▲' : '▼'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Expanded */}
       {isExpanded && (
-        <div className="border-t border-gray-100 p-4 bg-gray-50 animate-expand">
-          {reasoning && <p className="text-sm text-gray-500 italic mb-3">{reasoning}</p>}
+        <div className="px-4 pb-4 animate-expand" style={{ borderTop: '1px solid var(--border-light)' }}>
+          <div className="pt-4">
+            {reasoning && <p className="text-sm italic mb-3" style={{ color: 'var(--text-muted)' }}>{reasoning}</p>}
 
-          {/* Nutrition */}
-          {recipe.nutrition && (
-            <div className="flex gap-3 mb-3 text-xs">
-              {recipe.nutrition.calories && (
-                <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded-lg font-medium">{recipe.nutrition.calories} kcal</span>
-              )}
-              {recipe.nutrition.protein && (
-                <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-lg font-medium">{recipe.nutrition.protein}g protein</span>
-              )}
-              {recipe.nutrition.carbohydrates && (
-                <span className="bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">{recipe.nutrition.carbohydrates}g kolh</span>
-              )}
-              {recipe.nutrition.fat && (
-                <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded-lg">{recipe.nutrition.fat}g fett</span>
-              )}
-            </div>
-          )}
+            {/* Nutrition */}
+            {recipe.nutrition && (
+              <div className="flex gap-3 mb-4 text-xs font-medium">
+                {recipe.nutrition.calories && <span className="px-2.5 py-1 rounded-lg" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)' }}>{recipe.nutrition.calories} kcal</span>}
+                {recipe.nutrition.protein && <span className="px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>{recipe.nutrition.protein}g protein</span>}
+              </div>
+            )}
 
-          {mealprep_tip && (
-            <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 mb-3 text-xs text-blue-800">
-              <span className="font-medium">💡 Mealprep:</span> {mealprep_tip}
-            </div>
-          )}
+            {mealprep_tip && (
+              <p className="text-xs p-2.5 rounded-lg mb-4" style={{ backgroundColor: '#f0f9ff', color: '#0369a1' }}>
+                <strong>Tips:</strong> {mealprep_tip}
+              </p>
+            )}
 
-          {/* Offer details */}
-          {offer_matches && offer_matches.length > 0 && (
-            <div className="mb-3">
-              <h4 className="text-xs font-medium text-gray-500 mb-1.5">Erbjudanden som används</h4>
-              <div className="space-y-1">
+            {/* Offers */}
+            {offer_matches?.length > 0 && (
+              <div className="mb-4 space-y-1">
                 {offer_matches.map((o, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs bg-green-50 rounded-lg px-2.5 py-1.5">
-                    <span className="text-gray-700">{o.product_name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-green-700">{Math.round(o.offer_price)} {o.unit}</span>
-                      {o.original_price && <span className="text-gray-400 line-through">{Math.round(o.original_price)}</span>}
-                    </div>
+                  <div key={i} className="flex justify-between text-xs py-1.5 px-3 rounded-lg" style={{ backgroundColor: 'var(--green-soft)' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{o.product_name}</span>
+                    <span>
+                      <strong style={{ color: 'var(--green)' }}>{Math.round(o.offer_price)} {o.unit}</strong>
+                      {o.original_price && <span className="ml-1.5 line-through" style={{ color: 'var(--text-muted)' }}>{Math.round(o.original_price)}</span>}
+                    </span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Ingredients */}
-          <div className="mb-4">
-            <h4 className="font-medium text-sm text-gray-900 mb-2">Ingredienser ({scaled_servings} port)</h4>
-            <ul className="text-sm text-gray-700 space-y-1">
+            {/* Ingredients */}
+            <h4 className="font-medium text-sm mb-2">Ingredienser <span style={{ color: 'var(--text-muted)' }}>({scaled_servings} port)</span></h4>
+            <ul className="text-sm space-y-0.5 mb-4" style={{ color: 'var(--text-secondary)' }}>
               {recipe.ingredients.map((ing, i) => {
-                const scaledAmount = kitchenRound(ing.amount * scale, ing.unit)
-                return (
-                  <li key={i} className="flex items-start gap-1.5">
-                    <span className="text-gray-300 mt-0.5">•</span>
-                    <span>
-                      {scaledAmount > 0 && <span className="text-gray-500">{scaledAmount} {ing.unit} </span>}
-                      {ing.name}
-                    </span>
-                  </li>
-                )
+                const amt = kitchenRound(ing.amount * scale, ing.unit)
+                return <li key={i}>{amt > 0 && <span style={{ color: 'var(--text-muted)' }}>{amt} {ing.unit} </span>}{ing.name}</li>
               })}
             </ul>
-          </div>
 
-          {/* Instructions */}
-          <div className="mb-4">
-            <h4 className="font-medium text-sm text-gray-900 mb-2">Gör så här</h4>
-            <ol className="text-sm text-gray-700 space-y-2">
+            {/* Instructions */}
+            <h4 className="font-medium text-sm mb-2">Instruktioner</h4>
+            <ol className="text-sm space-y-2 mb-4" style={{ color: 'var(--text-secondary)' }}>
               {recipe.instructions.map((step, i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="text-green-700 font-medium shrink-0">{i + 1}.</span>
+                  <span className="font-medium shrink-0" style={{ color: 'var(--green)' }}>{i + 1}.</span>
                   <span>{step}</span>
                 </li>
               ))}
             </ol>
+
+            {recipe.source_url && (
+              <a href={recipe.source_url} target="_blank" rel="noopener noreferrer"
+                className="text-sm underline mb-4 inline-block" style={{ color: 'var(--green)' }}>
+                Originalrecept
+              </a>
+            )}
+
+            {/* Feedback */}
+            <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-light)' }}>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Vad tycker du?</span>
+              {['liked', 'disliked'].map(action => (
+                <button key={action} onClick={(e) => { e.stopPropagation(); setFeedback(action); onFeedback?.(day, action) }}
+                  className={`w-10 h-10 rounded-full border text-sm transition-all ${
+                    feedback === action ? 'scale-110 shadow-sm' : ''
+                  }`}
+                  style={{
+                    borderColor: feedback === action ? (action === 'liked' ? 'var(--green)' : '#ef4444') : 'var(--border)',
+                    backgroundColor: feedback === action ? (action === 'liked' ? 'var(--green-soft)' : '#fef2f2') : 'transparent',
+                  }}>
+                  {action === 'liked' ? '↑' : '↓'}
+                </button>
+              ))}
+              {feedback && <span className="text-xs" style={{ color: 'var(--green)' }}>Tack!</span>}
+            </div>
           </div>
-
-          {recipe.source_url && (
-            <a href={recipe.source_url} target="_blank" rel="noopener noreferrer"
-              className="inline-block text-sm text-green-700 hover:text-green-800 underline mb-4">
-              Originalrecept →
-            </a>
-          )}
-
-          {/* Feedback */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs text-gray-400">Betyg:</span>
-            {['liked', 'disliked'].map(action => (
-              <button key={action} onClick={(e) => { e.stopPropagation(); handleFeedback(action) }}
-                className={`w-11 h-11 rounded-full border text-lg transition-all ${
-                  feedback === action
-                    ? action === 'liked' ? 'bg-green-100 border-green-300 scale-110' : 'bg-red-100 border-red-300 scale-110'
-                    : 'border-gray-200 hover:border-gray-400'
-                }`}>
-                {action === 'liked' ? '👍' : '👎'}
-              </button>
-            ))}
-            {feedback && <span className="text-xs text-green-600 ml-1">Tack!</span>}
-          </div>
-
-          {/* Swap — direct button, no dropdown */}
-          <button onClick={(e) => { e.stopPropagation(); onSwap(day, '') }}
-            disabled={swapping === day}
-            className="w-full py-2.5 text-sm border border-gray-300 rounded-lg hover:border-green-700 hover:text-green-700 disabled:opacity-50 transition-colors">
-            {swapping === day ? (
-              <span className="flex items-center justify-center gap-1.5">
-                <span className="w-4 h-4 border-2 border-gray-300 border-t-green-700 rounded-full animate-spin" />
-                Byter...
-              </span>
-            ) : '🔄 Byt recept'}
-          </button>
         </div>
       )}
     </article>

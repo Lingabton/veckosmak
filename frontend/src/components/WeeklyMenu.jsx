@@ -1,61 +1,48 @@
 import RecipeCard from './RecipeCard'
 import SavingsBanner from './SavingsBanner'
 
-const STORE_NAMES = {
-  'ica-maxi-1004097': 'ICA Maxi Boglundsängen, Örebro',
-}
-
 export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onBack, onRegenerate, onFeedback, expandAll, setExpandAll }) {
   if (!menu) return null
-  const storeName = STORE_NAMES[menu.store_id] || menu.store_id
 
   return (
-    <section aria-label="Veckomeny">
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={onBack} className="text-sm text-gray-500 hover:text-green-700 transition-colors">
-          ← Ändra inställningar
+    <section className="animate-fade-in">
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={onBack} className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>
+          Ändra inställningar
         </button>
         <button onClick={onShowShopping}
-          className="text-sm font-medium btn-accent px-4 py-1.5 rounded-full">
-          Inköpslista →
+          className="text-sm font-medium px-4 py-1.5 rounded-full text-white transition-colors"
+          style={{ backgroundColor: 'var(--accent)' }}>
+          Inköpslista
         </button>
       </div>
 
-      <div className="mb-4">
-        <h1 className="text-xl font-bold text-gray-900">Din veckomeny</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Vecka {menu.week_number}, {menu.year} — 📍 {storeName}
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold tracking-tight">Din veckomeny</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+          Vecka {menu.week_number}, {menu.year} — ICA Maxi Boglundsängen
         </p>
       </div>
 
       <SavingsBanner menu={menu} />
 
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-4">
         <button onClick={() => setExpandAll(!expandAll)}
-          className="text-xs text-gray-500 hover:text-green-700 transition-colors">
-          {expandAll ? 'Dölj alla recept' : 'Visa alla recept'}
+          className="text-xs transition-colors" style={{ color: 'var(--text-muted)' }}>
+          {expandAll ? 'Dölj alla' : 'Visa alla recept'}
         </button>
-        <span className="text-xs text-gray-400">{menu.meals.length} middagar</span>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         {menu.meals.map((meal, i) => (
-          <RecipeCard
-            key={meal.day}
-            meal={meal}
-            onSwap={onSwap}
-            swapping={swapping}
-            onFeedback={onFeedback}
-            forceExpand={expandAll}
-            index={i}
-          />
+          <RecipeCard key={meal.day} meal={meal} onSwap={onSwap} swapping={swapping}
+            onFeedback={onFeedback} forceExpand={expandAll} index={i} />
         ))}
       </div>
 
-      <div className="mt-6 text-center">
-        <button onClick={onRegenerate}
-          className="text-sm text-gray-500 hover:text-green-700 transition-colors">
-          🔄 Generera en helt ny meny
+      <div className="mt-8 text-center">
+        <button onClick={onRegenerate} className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>
+          Generera ny meny
         </button>
       </div>
     </section>

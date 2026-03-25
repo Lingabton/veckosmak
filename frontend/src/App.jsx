@@ -4,7 +4,6 @@ import TopOffers from './components/TopOffers'
 import WeeklyMenu from './components/WeeklyMenu'
 import ShoppingList from './components/ShoppingList'
 import LoadingSkeleton from './components/LoadingSkeleton'
-import Footer from './components/Footer'
 import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
@@ -19,35 +18,31 @@ function App() {
   } = useMenu()
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-green-700 text-white py-4 px-4 shadow-sm print:hidden">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity"
-            onClick={(e) => { e.preventDefault(); setView(menu ? 'menu' : 'preferences') }}>
-            <img src="/logo.svg" alt="" className="w-8 h-8" />
-            <div>
-              <span className="text-xl font-bold block leading-tight">Veckosmak</span>
-              <span className="text-green-300 text-xs">Smartare middagar</span>
-            </div>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg)' }}>
+      {/* Header */}
+      <header className="print:hidden" style={{ backgroundColor: 'var(--green-deep)' }}>
+        <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between">
+          <a href="/" className="group" onClick={(e) => { e.preventDefault(); setView(menu ? 'menu' : 'preferences') }}>
+            <span className="text-white text-xl font-bold tracking-tight">veckosmak</span>
+            <span className="text-green-300 text-xs block mt-0.5 group-hover:text-green-200 transition-colors">smartare middagar</span>
           </a>
           {menu && (
-            <nav className="flex gap-2 text-sm">
-              <button onClick={() => setView('menu')}
-                className={`px-3 py-1.5 rounded-full transition-colors ${view === 'menu' ? 'bg-green-600' : 'text-green-200 hover:text-white'}`}>
-                Meny
-              </button>
-              <button onClick={() => setView('shopping')}
-                className={`px-3 py-1.5 rounded-full transition-colors ${view === 'shopping' ? 'bg-green-600' : 'text-green-200 hover:text-white'}`}>
-                Inköpslista
-              </button>
+            <nav className="flex gap-1 text-sm">
+              {[['menu', 'Meny'], ['shopping', 'Inköpslista']].map(([v, label]) => (
+                <button key={v} onClick={() => setView(v)}
+                  className={`px-3.5 py-1.5 rounded-full transition-colors ${
+                    view === v ? 'bg-white/20 text-white' : 'text-green-200 hover:text-white'
+                  }`}>{label}</button>
+              ))}
             </nav>
           )}
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 flex-1 w-full">
+      <main className="max-w-2xl mx-auto px-5 py-8 flex-1 w-full">
         {error && (
-          <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm animate-fade-in">
+          <div role="alert" className="border rounded-lg p-3 mb-5 text-sm animate-fade-in"
+            style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#b91c1c' }}>
             {error}
           </div>
         )}
@@ -57,49 +52,33 @@ function App() {
             <LoadingSkeleton />
           ) : view === 'preferences' ? (
             <PreferencesForm
-              preferences={preferences}
-              setPreferences={setPreferences}
-              onGenerate={goToOffers}
-              onGenerateDirect={generateMenu}
-              loading={loading}
-              isReturning={isReturning}
+              preferences={preferences} setPreferences={setPreferences}
+              onGenerate={goToOffers} onGenerateDirect={generateMenu}
+              loading={loading} isReturning={isReturning}
             />
           ) : view === 'offers' ? (
             <TopOffers
-              offers={topOffers}
-              preferences={preferences}
-              setPreferences={setPreferences}
-              onGenerate={generateMenu}
-              onBack={() => setView('preferences')}
-              loading={loading}
-              loadingOffers={loadingOffers}
+              offers={topOffers} preferences={preferences} setPreferences={setPreferences}
+              onGenerate={generateMenu} onBack={() => setView('preferences')}
+              loading={loading} loadingOffers={loadingOffers}
             />
           ) : view === 'menu' && menu ? (
             <WeeklyMenu
-              menu={menu}
-              onSwap={swapRecipe}
-              swapping={swapping}
-              onShowShopping={() => setView('shopping')}
-              onBack={() => setView('preferences')}
-              onRegenerate={generateMenu}
-              onFeedback={sendFeedback}
-              expandAll={expandAll}
-              setExpandAll={setExpandAll}
+              menu={menu} onSwap={swapRecipe} swapping={swapping}
+              onShowShopping={() => setView('shopping')} onBack={() => setView('preferences')}
+              onRegenerate={generateMenu} onFeedback={sendFeedback}
+              expandAll={expandAll} setExpandAll={setExpandAll}
             />
           ) : view === 'shopping' && menu ? (
-            <ShoppingList
-              menu={menu}
-              onBack={() => setView('menu')}
-              copySuccess={copySuccess}
-              onCopy={copyToClipboard}
-            />
+            <ShoppingList menu={menu} onBack={() => setView('menu')}
+              copySuccess={copySuccess} onCopy={copyToClipboard} />
           ) : (
-            <div className="text-center py-16 animate-fade-in">
-              <div className="text-5xl mb-4">🍽️</div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Ingen meny ännu</h2>
-              <p className="text-gray-500 text-sm mb-4">Skapa en veckomeny för att komma igång.</p>
+            <div className="text-center py-20 animate-fade-in">
+              <h2 className="text-xl font-semibold mb-2">Ingen meny skapad</h2>
+              <p className="text-gray-500 text-sm mb-6">Kom igång genom att skapa din veckomeny.</p>
               <button onClick={() => setView('preferences')}
-                className="px-6 py-2.5 btn-accent rounded-xl">
+                className="px-8 py-3 rounded-lg text-white font-medium transition-colors"
+                style={{ backgroundColor: 'var(--accent)' }}>
                 Skapa veckomeny
               </button>
             </div>
@@ -107,7 +86,13 @@ function App() {
         </ErrorBoundary>
       </main>
 
-      <Footer />
+      {/* Footer */}
+      <footer className="print:hidden" style={{ borderTop: '1px solid var(--border)' }}>
+        <div className="max-w-2xl mx-auto px-5 py-4 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <span><strong style={{ color: 'var(--text-secondary)' }}>veckosmak</strong> — gratis menyplanering</span>
+          <span>ICA Maxi Boglundsängen, Örebro</span>
+        </div>
+      </footer>
     </div>
   )
 }
