@@ -121,15 +121,24 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
                       }`} style={!isChecked ? { borderColor: 'var(--border)' } : {}}>
                         {isChecked && <span className="text-white text-xs">✓</span>}
                       </div>
-                      <span className={`text-sm flex-1 ${isChecked ? 'line-through' : ''}`}>
-                        {item.total_amount > 0 && <span style={{ color: 'var(--text-muted)' }}>{item.total_amount} {item.unit} </span>}
-                        {item.ingredient_name}
-                      </span>
+                      <div className={`flex-1 min-w-0 ${isChecked ? 'line-through' : ''}`}>
+                        <span className="text-sm">
+                          {item.total_amount > 0 && <span style={{ color: 'var(--text-muted)' }}>{item.total_amount} {item.unit} </span>}
+                          {item.ingredient_name}
+                        </span>
+                        {item.is_on_offer && item.matched_offer && (
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--green)' }}>
+                            {item.matched_offer.product_name}
+                            {item.matched_offer.brand && <span style={{ color: 'var(--text-muted)' }}> — {item.matched_offer.brand}</span>}
+                            {item.matched_offer.quantity_deal && <span> ({item.matched_offer.quantity_deal})</span>}
+                          </p>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {item.is_on_offer && (
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full"
                             style={{ backgroundColor: 'var(--green-soft)', color: 'var(--green)' }}>
-                            Erbjudande
+                            {item.matched_offer ? `${Math.round(item.matched_offer.offer_price)} ${item.matched_offer.unit}` : 'Erbjudande'}
                           </span>
                         )}
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>~{Math.round(item.estimated_price)} kr</span>
