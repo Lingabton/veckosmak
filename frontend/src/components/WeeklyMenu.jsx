@@ -1,17 +1,25 @@
+import { useState } from 'react'
 import RecipeCard from './RecipeCard'
 import SavingsBanner from './SavingsBanner'
 
 export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onBack, onRegenerate, onFeedback, expandAll, setExpandAll, bonusOffers }) {
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
   if (!menu) return null
+
+  const handleRegenerate = () => {
+    if (!confirmRegenerate) { setConfirmRegenerate(true); return }
+    setConfirmRegenerate(false)
+    onRegenerate()
+  }
 
   return (
     <section className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <button onClick={onBack} className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>
+        <button onClick={onBack} className="text-sm" style={{ color: 'var(--text-muted)' }}>
           Ändra inställningar
         </button>
         <button onClick={onShowShopping}
-          className="text-sm font-medium px-4 py-1.5 rounded-full text-white transition-colors"
+          className="text-sm font-medium px-4 py-1.5 rounded-full text-white"
           style={{ backgroundColor: 'var(--accent)' }}>
           Inköpslista
         </button>
@@ -20,15 +28,25 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
       <div className="mb-5">
         <h1 className="text-2xl font-bold tracking-tight">Din veckomeny</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Vecka {menu.week_number}, {menu.year} — ICA Maxi Boglundsängen
+          {menu.date_range || `Vecka ${menu.week_number}`} — ICA Maxi Boglundsängen
         </p>
+        {/* Active filters (#11) */}
+        {menu.active_filters && menu.active_filters.length > 0 && (
+          <div className="flex gap-1.5 mt-2">
+            {menu.active_filters.map(f => (
+              <span key={f} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--green-soft)', color: 'var(--green)' }}>
+                {f}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <SavingsBanner menu={menu} />
 
       <div className="flex items-center justify-between mb-4">
         <button onClick={() => setExpandAll(!expandAll)}
-          className="text-xs transition-colors" style={{ color: 'var(--text-muted)' }}>
+          className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {expandAll ? 'Dölj alla' : 'Visa alla recept'}
         </button>
       </div>
@@ -40,12 +58,12 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
         ))}
       </div>
 
-      {/* Passa på — bonus offers not used in menu */}
+      {/* Passa på — with "add to list" potential */}
       {bonusOffers && bonusOffers.length > 0 && (
         <div className="mt-10">
           <h2 className="text-lg font-bold tracking-tight mb-1">Passa på</h2>
           <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-            Bra erbjudanden utanför din meny denna vecka
+            Bra priser utanför din meny denna vecka
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {bonusOffers.map((offer, i) => (
@@ -63,11 +81,6 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
                   {offer.discount > 0 && (
                     <span className="block text-xs font-medium" style={{ color: 'var(--green)' }}>−{offer.discount}%</span>
                   )}
-                  {offer.original_price && (
-                    <span className="block text-xs line-through" style={{ color: 'var(--text-muted)' }}>
-                      {Math.round(offer.original_price)}
-                    </span>
-                  )}
                 </div>
               </div>
             ))}
@@ -75,10 +88,27 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
         </div>
       )}
 
+      {/* Regenerate with confirm (#58) */}
       <div className="mt-8 text-center">
-        <button onClick={onRegenerate} className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>
-          Generera ny meny
-        </button>
+        {confirmRegenerate ? (
+          <div className="animate-fade-in">
+            <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Nuvarande meny försvinner. Fortsätta?</p>
+            <div className="flex justify-center gap-3">
+              <button onClick={handleRegenerate}
+                className="text-sm font-medium px-4 py-1.5 rounded-full text-white" style={{ backgroundColor: 'var(--accent)' }}>
+                Ja, generera ny
+              </button>
+              <button onClick={() => setConfirmRegenerate(false)}
+                className="text-sm px-4 py-1.5 rounded-full border" style={{ borderColor: 'var(--border)' }}>
+                Avbryt
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={handleRegenerate} className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Generera ny meny
+          </button>
+        )}
       </div>
     </section>
   )

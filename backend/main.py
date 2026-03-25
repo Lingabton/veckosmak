@@ -233,7 +233,7 @@ async def swap_menu_recipe(req: SwapRequest):
     menu.total_cost_without_offers = round(
         sum(m.estimated_cost_without_offers for m in menu.meals), 2
     )
-    menu.total_savings = round(menu.total_cost_without_offers - menu.total_cost, 2)
+    menu.total_savings = round(max(0, menu.total_cost_without_offers - menu.total_cost), 2)
     menu.savings_percentage = round(
         (menu.total_savings / menu.total_cost_without_offers * 100)
         if menu.total_cost_without_offers > 0
@@ -241,7 +241,12 @@ async def swap_menu_recipe(req: SwapRequest):
         1,
     )
 
-    return new_meal
+    # Rebuild shopping list with updated meals
+    from backend.planner.optimizer import _build_shopping_list
+    menu.shopping_list = _build_shopping_list(menu.meals, offers, menu.preferences.household_size)
+
+    # Return the full updated menu so frontend can refresh everything
+    return menu
 
 
 @app.get("/api/offers/top")

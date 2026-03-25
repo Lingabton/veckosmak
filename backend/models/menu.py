@@ -35,5 +35,7 @@ class WeeklyMenu(BaseModel):
     pinned_offers: list[Offer] = []
     budget_exceeded: bool = False      # True if total_cost > budget
     budget_exceeded_by: float = 0.0    # How much over budget
-    confirmed_savings: float = 0.0     # Savings based on known original prices
-    estimated_savings: float = 0.0     # Savings based on assumed 30% markup
+    confirmed_savings: float = 0.0
+    estimated_savings: float = 0.0
+    date_range: str = ""               # "24 mar – 28 mar" for display
+    active_filters: list[str] = []     # ["Laktosfri", "Fläskfri"] for display

@@ -194,12 +194,20 @@ def test_not_processed():
 
 # --- Preference filtering ---
 
+def _full_ingredients(main_name, main_cat):
+    """Create 3+ ingredients so recipe passes incomplete filter."""
+    return [
+        Ingredient(name=main_name, amount=500, unit="g", category=main_cat),
+        Ingredient(name="lök", amount=1, unit="st", category="produce"),
+        Ingredient(name="potatis", amount=400, unit="g", category="produce"),
+    ]
+
 def test_filter_vegetarian():
     recipes = [
         Recipe(id="r1", title="Kycklingsallad", source="t", servings=4, cook_time_minutes=30,
-            ingredients=[Ingredient(name="kyckling", amount=500, unit="g", category="meat")]),
+            ingredients=_full_ingredients("kyckling", "meat")),
         Recipe(id="r2", title="Grönsakssoppa", source="t", servings=4, cook_time_minutes=30,
-            ingredients=[Ingredient(name="morot", amount=300, unit="g", category="produce")]),
+            ingredients=_full_ingredients("morot", "produce")),
     ]
     prefs = UserPreferences(dietary_restrictions=["vegetarian"])
     result = filter_recipes_by_preferences(recipes, prefs)
@@ -209,8 +217,10 @@ def test_filter_vegetarian():
 
 def test_filter_poorly_rated():
     recipes = [
-        Recipe(id="r1", title="Bad", source="t", servings=4, cook_time_minutes=30, rating=1.5, rating_count=20),
-        Recipe(id="r2", title="Good", source="t", servings=4, cook_time_minutes=30, rating=4.5, rating_count=100),
+        Recipe(id="r1", title="Bad", source="t", servings=4, cook_time_minutes=30, rating=1.5, rating_count=20,
+            ingredients=_full_ingredients("kyckling", "meat")),
+        Recipe(id="r2", title="Good", source="t", servings=4, cook_time_minutes=30, rating=4.5, rating_count=100,
+            ingredients=_full_ingredients("lax", "fish")),
     ]
     prefs = UserPreferences()
     result = filter_recipes_by_preferences(recipes, prefs)

@@ -5,8 +5,12 @@ const CATEGORIES = {
   produce: 'Frukt & grönt', meat: 'Kött & chark', fish: 'Fisk & skaldjur',
   dairy: 'Mejeri & ägg', pantry: 'Skafferi', bakery: 'Bröd', frozen: 'Fryst', other: 'Övrigt',
 }
-// Order matches ICA Maxi Boglundsängen, Örebro store layout
+// ICA Maxi Boglundsängen layout
 const CATEGORY_ORDER = ['bakery', 'meat', 'fish', 'produce', 'dairy', 'pantry', 'frozen', 'other']
+const CAT_COLORS = {
+  bakery: '#92400e', meat: '#991b1b', fish: '#1e40af', produce: '#166534',
+  dairy: '#4338ca', pantry: '#78350f', frozen: '#0e7490', other: '#6b7280',
+}
 
 export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
   const [checked, setChecked] = useState(loadChecked)
@@ -16,6 +20,7 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
   const { items, total_estimated_cost, items_on_offer } = menu.shopping_list
   const checkedCount = Object.values(checked).filter(Boolean).length
   const progress = items.length > 0 ? (checkedCount / items.length) * 100 : 0
+  const remainingCost = items.reduce((sum, i) => checked[i.ingredient_name] ? sum : sum + i.estimated_price, 0)
   const toggle = (name) => setChecked(prev => ({ ...prev, [name]: !prev[name] }))
 
   const grouped = {}
@@ -47,33 +52,41 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
   }
 
   return (
-    <section className="animate-fade-in print-section">
+    <section className="animate-fade-in">
       <div className="flex items-center justify-between mb-6 print:hidden">
         <button onClick={onBack} className="text-sm" style={{ color: 'var(--text-muted)' }}>Tillbaka</button>
         <div className="flex gap-4">
           <button onClick={handleShare} className="text-sm font-medium" style={{ color: 'var(--green)' }}>
             {copySuccess ? 'Kopierat' : 'Dela'}
           </button>
-          <button onClick={() => window.print()} className="text-sm print:hidden" style={{ color: 'var(--text-muted)' }}>
-            Skriv ut
-          </button>
+          <button onClick={() => window.print()} className="text-sm print:hidden" style={{ color: 'var(--text-muted)' }}>Skriv ut</button>
         </div>
       </div>
 
       <h1 className="text-2xl font-bold tracking-tight mb-1">Inköpslista</h1>
       <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-        Vecka {menu.week_number} — {items_on_offer} varor på erbjudande
+        {menu.date_range || `Vecka ${menu.week_number}`} — {items_on_offer} erbjudanden
       </p>
 
-      {/* Progress */}
+      {/* Progress + remaining cost */}
       <div className="mb-6">
-        <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-          <span>{checkedCount} av {items.length}</span>
-          <span>{Math.round(total_estimated_cost)} kr</span>
+        <div className="flex justify-between text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
+          <span>{checkedCount} av {items.length} varor</span>
+          <span>
+            {checkedCount > 0 && checkedCount < items.length
+              ? `~${Math.round(remainingCost)} kr kvar`
+              : `~${Math.round(total_estimated_cost)} kr totalt`
+            }
+          </span>
         </div>
         <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--border)' }}>
           <div className="h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: 'var(--green)' }} />
         </div>
+        {checkedCount === items.length && items.length > 0 && (
+          <p className="text-sm font-medium mt-2 text-center" style={{ color: 'var(--green)' }}>
+            Klart! Allt avbockat.
+          </p>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -81,45 +94,50 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
           const catItems = grouped[cat]
           if (!catItems?.length) return null
           const catTotal = catItems.reduce((s, i) => s + i.estimated_price, 0)
+          const catColor = CAT_COLORS[cat] || 'var(--text-secondary)'
+
           return (
             <div key={cat}>
               <div className="flex justify-between items-center mb-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: catColor }}>
                   {CATEGORIES[cat]}
                 </h2>
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>~{Math.round(catTotal)} kr</span>
               </div>
-              <ul className="space-y-0.5">
+              <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
                 {catItems.map((item, i) => {
                   const isChecked = !!checked[item.ingredient_name]
                   return (
-                    <li key={i} onClick={() => toggle(item.ingredient_name)}
-                      className={`flex items-center gap-3 py-2.5 px-3 rounded-xl cursor-pointer transition-all ${
-                        isChecked ? 'opacity-35' : ''
-                      }`}
-                      style={{ backgroundColor: isChecked ? 'var(--bg)' : 'var(--surface)' }}>
+                    <div key={i} onClick={() => toggle(item.ingredient_name)}
+                      className={`flex items-center gap-3 py-3 px-3.5 cursor-pointer transition-all ${
+                        i > 0 ? 'border-t' : ''
+                      } ${isChecked ? 'opacity-35' : ''}`}
+                      style={{
+                        backgroundColor: isChecked ? 'var(--bg)' : 'var(--surface)',
+                        borderColor: 'var(--border-light)',
+                      }}>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                         isChecked ? 'border-green-600 bg-green-600' : ''
                       }`} style={!isChecked ? { borderColor: 'var(--border)' } : {}}>
                         {isChecked && <span className="text-white text-xs">✓</span>}
                       </div>
-                      <span className={`text-sm flex-1 ${isChecked ? 'line-through' : ''}`}
-                        style={{ color: isChecked ? 'var(--text-muted)' : 'var(--text)' }}>
+                      <span className={`text-sm flex-1 ${isChecked ? 'line-through' : ''}`}>
                         {item.total_amount > 0 && <span style={{ color: 'var(--text-muted)' }}>{item.total_amount} {item.unit} </span>}
                         {item.ingredient_name}
                       </span>
                       <div className="flex items-center gap-2 shrink-0">
                         {item.is_on_offer && (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--green-soft)', color: 'var(--green)' }}>
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: 'var(--green-soft)', color: 'var(--green)' }}>
                             Erbjudande
                           </span>
                         )}
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>~{Math.round(item.estimated_price)} kr</span>
                       </div>
-                    </li>
+                    </div>
                   )
                 })}
-              </ul>
+              </div>
             </div>
           )
         })}

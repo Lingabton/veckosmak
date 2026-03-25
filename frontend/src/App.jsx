@@ -41,9 +41,13 @@ function App() {
 
       <main className="max-w-2xl mx-auto px-5 py-8 flex-1 w-full">
         {error && (
-          <div role="alert" className="border rounded-lg p-3 mb-5 text-sm animate-fade-in"
+          <div role="alert" className="border rounded-lg p-4 mb-5 text-sm animate-fade-in"
             style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#b91c1c' }}>
-            {error}
+            <p>{error}</p>
+            <button onClick={generateMenu}
+              className="mt-2 text-sm font-medium underline" style={{ color: '#b91c1c' }}>
+              Försök igen
+            </button>
           </div>
         )}
 

@@ -347,10 +347,13 @@ def generate_fallback_menu(
 
 
 def _get_days(preferences: UserPreferences) -> list[str]:
-    """Get which days to assign meals to."""
+    """Get which days to assign meals to, starting from today."""
     if preferences.selected_days and len(preferences.selected_days) >= preferences.num_dinners:
         return preferences.selected_days[:preferences.num_dinners]
-    return DAYS[:preferences.num_dinners]
+    # Start from today's weekday
+    today_idx = datetime.now().weekday()  # 0=Monday
+    remaining = [DAYS[i % 7] for i in range(today_idx, today_idx + 7)]
+    return remaining[:preferences.num_dinners]
 
 
 def _get_servings_scale(recipe: Recipe, household_size: int) -> float:
@@ -484,17 +487,21 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
     total_savings = max(0, total_without - total_cost)  # Clamp: never show negative savings
     savings_pct = (total_savings / total_without * 100) if total_without > 0 else 0
 
-    # Split confirmed vs estimated savings
+    # Split confirmed vs estimated savings (deduplicate offers across meals)
     confirmed = 0.0
     estimated = 0.0
+    seen_offer_ids = set()
     for meal in meals:
         for offer in meal.offer_matches:
+            if offer.id in seen_offer_ids:
+                continue
+            seen_offer_ids.add(offer.id)
             if offer.original_price:
-                confirmed += offer.original_price - offer.offer_price
+                confirmed += max(0, offer.original_price - offer.offer_price)
             else:
                 estimated += offer.offer_price * 0.3
-    confirmed = max(0, round(confirmed, 2))
-    estimated = max(0, round(estimated, 2))
+    confirmed = round(confirmed, 2)
+    estimated = round(estimated, 2)
 
     # Budget check
     budget_exceeded = False
@@ -506,6 +513,21 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
     shopping_list = _build_shopping_list(meals, offers, preferences.household_size)
 
     now = datetime.now()
+    # Build date range string and active filters for frontend
+    from datetime import timedelta
+    start_date = now.date()
+    end_date = start_date + timedelta(days=preferences.num_dinners - 1)
+    months_sv = {1:'jan',2:'feb',3:'mar',4:'apr',5:'maj',6:'jun',7:'jul',8:'aug',9:'sep',10:'okt',11:'nov',12:'dec'}
+    date_range = f"{start_date.day} {months_sv[start_date.month]} – {end_date.day} {months_sv[end_date.month]}"
+
+    filter_labels = {
+        'vegetarian':'Vegetarisk','vegan':'Vegansk','glutenfree':'Glutenfri',
+        'dairyfree':'Mjölkfri','lactosefree':'Laktosfri','porkfree':'Fläskfri',
+    }
+    active_filters = [filter_labels.get(d, d) for d in preferences.dietary_restrictions]
+    if preferences.has_children:
+        active_filters.append('Barnvänligt')
+
     menu = WeeklyMenu(
         id=str(uuid.uuid4())[:8],
         week_number=now.isocalendar()[1],
@@ -520,6 +542,8 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
         savings_percentage=round(savings_pct, 1),
         generated_at=now.isoformat(),
         pinned_offers=pinned_offers,
+        date_range=date_range,
+        active_filters=active_filters,
         budget_exceeded=budget_exceeded,
         budget_exceeded_by=budget_exceeded_by,
         confirmed_savings=confirmed,

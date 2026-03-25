@@ -170,22 +170,9 @@ export function useMenu() {
         const data = await resp.json().catch(() => ({}))
         throw new Error(data.detail || 'Kunde inte byta recept. Försök igen.')
       }
-      const newMeal = await resp.json()
-      setMenu(prev => {
-        const updatedMeals = prev.meals.map(m => m.day === day ? newMeal : m)
-        const totalCost = updatedMeals.reduce((sum, m) => sum + m.estimated_cost, 0)
-        const totalWithout = updatedMeals.reduce((sum, m) => sum + m.estimated_cost_without_offers, 0)
-        const totalSavings = totalWithout - totalCost
-        const savingsPercentage = totalWithout > 0 ? (totalSavings / totalWithout * 100) : 0
-        return {
-          ...prev,
-          meals: updatedMeals,
-          total_cost: Math.round(totalCost * 100) / 100,
-          total_cost_without_offers: Math.round(totalWithout * 100) / 100,
-          total_savings: Math.round(totalSavings * 100) / 100,
-          savings_percentage: Math.round(savingsPercentage * 10) / 10,
-        }
-      })
+      // Backend now returns full updated menu (with rebuilt shopping list)
+      const updatedMenu = await resp.json()
+      setMenu(updatedMenu)
     } catch (e) {
       setError(e.message)
     } finally {

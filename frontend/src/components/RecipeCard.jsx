@@ -52,13 +52,16 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
 
         <div className="p-4">
           <h3 className="font-semibold text-base leading-snug">{recipe.title}</h3>
-          <div className="flex items-center gap-3 mt-1.5">
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <Stars score={popularity_score} />
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{recipe.cook_time_minutes} min</span>
             {offer_matches?.length > 0 && (
               <span className="text-xs font-medium" style={{ color: 'var(--green)' }}>
                 {offer_matches.length} erbjudanden
               </span>
+            )}
+            {recipe.tags?.includes('barnvänlig') && (
+              <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fef3c7', color: '#92400e' }}>Barnvänlig</span>
             )}
           </div>
 
