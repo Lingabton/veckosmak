@@ -122,12 +122,34 @@ def _get_crowd_rating(recipe: Recipe) -> float:
     return recipe.rating if recipe.rating is not None else 0.0
 
 
+# Skip these — not complete dinners
+INCOMPLETE_RECIPE_KEYWORDS = [
+    "grundrecept", "bas ", "basen", "sås till", "dressing",
+    "marinad", "smör till", "topping", "tillbehör",
+]
+
+
+def _is_incomplete_recipe(recipe: Recipe) -> bool:
+    """Check if a recipe is just a component, not a full dinner."""
+    title_lower = recipe.title.lower()
+    if any(kw in title_lower for kw in INCOMPLETE_RECIPE_KEYWORDS):
+        return True
+    # Too few non-pantry ingredients = probably not a full meal
+    real_ingredients = [i for i in recipe.ingredients if not i.is_pantry_staple]
+    if len(real_ingredients) < 3:
+        return True
+    return False
+
+
 def filter_recipes_by_preferences(
     recipes: list[Recipe], prefs: UserPreferences
 ) -> list[Recipe]:
     """Filter recipes based on user preferences."""
     filtered = []
     for r in recipes:
+        # Skip incomplete recipes (grundrecept, sauces, etc.)
+        if _is_incomplete_recipe(r):
+            continue
         # Dietary restrictions
         if "vegetarian" in prefs.dietary_restrictions:
             if any(i.category == "meat" for i in r.ingredients):

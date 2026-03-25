@@ -14,7 +14,7 @@ function App() {
     generateMenu, goToOffers, swapRecipe, sendFeedback,
     copySuccess, copyToClipboard,
     expandAll, setExpandAll,
-    isReturning,
+    isReturning, bonusOffers,
   } = useMenu()
 
   return (
@@ -68,6 +68,7 @@ function App() {
               onShowShopping={() => setView('shopping')} onBack={() => setView('preferences')}
               onRegenerate={generateMenu} onFeedback={sendFeedback}
               expandAll={expandAll} setExpandAll={setExpandAll}
+              bonusOffers={bonusOffers}
             />
           ) : view === 'shopping' && menu ? (
             <ShoppingList menu={menu} onBack={() => setView('menu')}

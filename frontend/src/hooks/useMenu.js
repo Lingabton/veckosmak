@@ -72,6 +72,7 @@ export function useMenu() {
   const [copySuccess, setCopySuccess] = useState(false)
   const [expandAll, setExpandAll] = useState(false)
   const [isReturning] = useState(() => !!localStorage.getItem(STORAGE_KEY))
+  const [bonusOffers, setBonusOffers] = useState([])
 
   useEffect(() => {
     const handlePop = () => {
@@ -142,6 +143,11 @@ export function useMenu() {
       const data = await resp.json()
       setMenu(data)
       saveChecked({})
+      // Fetch bonus offers (non-blocking)
+      fetch(`/api/offers/bonus?menu_id=${data.id}&store_id=${preferences.store_id}`)
+        .then(r => r.ok ? r.json() : { offers: [] })
+        .then(d => setBonusOffers(d.offers || []))
+        .catch(() => {})
       setView('menu')
     } catch (e) {
       setError(e.message)
@@ -213,6 +219,6 @@ export function useMenu() {
     generateMenu, goToOffers, swapRecipe, sendFeedback,
     copySuccess, copyToClipboard,
     expandAll, setExpandAll,
-    isReturning,
+    isReturning, bonusOffers,
   }
 }

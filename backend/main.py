@@ -279,6 +279,35 @@ async def submit_feedback(req: FeedbackRequest):
     return {"status": "ok"}
 
 
+@app.get("/api/offers/bonus")
+async def bonus_offers(menu_id: str = "", store_id: str = "ica-maxi-1004097"):
+    """Return good deals NOT used in the menu — 'passa på' offers."""
+    raw_offers = await get_current_offers(store_id)
+    offers = [_db_offer_to_model(o) for o in raw_offers]
+
+    # Find which offer IDs are already used in the menu
+    used_ids = set()
+    menu = _menu_cache.get(menu_id)
+    if menu:
+        for meal in menu.meals:
+            for o in meal.offer_matches:
+                used_ids.add(o.id)
+
+    # Return unused offers with decent discounts
+    bonus = []
+    for o in offers:
+        if o.id in used_ids:
+            continue
+        discount = 0
+        if o.original_price and o.original_price > 0:
+            discount = (1 - o.offer_price / o.original_price) * 100
+        if discount > 10 or o.quantity_deal:
+            bonus.append({**o.model_dump(), "discount": round(discount)})
+
+    bonus.sort(key=lambda x: -x.get("discount", 0))
+    return {"offers": bonus[:12]}
+
+
 @app.get("/api/stores")
 async def list_stores():
     from backend.scrapers.store_registry import STORE_REGISTRY
