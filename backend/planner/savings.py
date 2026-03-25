@@ -1,0 +1,151 @@
+"""Calculate meal costs and savings based on offer matches."""
+
+import logging
+from backend.models.offer import Offer
+from backend.models.recipe import Ingredient
+from backend.planner.matcher import match_ingredient_to_offers
+
+logger = logging.getLogger(__name__)
+
+# Default prices per category (kr per typical unit) when no offer/price is known
+DEFAULT_PRICES = {
+    "meat": 120.0,    # kr/kg
+    "fish": 160.0,    # kr/kg
+    "dairy": 25.0,    # kr/st
+    "produce": 20.0,  # kr/st
+    "pantry": 20.0,   # kr/st
+    "bakery": 30.0,   # kr/st
+    "frozen": 35.0,   # kr/st
+    "other": 25.0,    # kr/st
+}
+
+# Approximate weight per unit for weight-based pricing
+WEIGHT_PER_UNIT = {
+    "g": 0.001,   # grams to kg
+    "kg": 1.0,
+    "dl": 0.1,    # rough: 1 dl ~ 100g
+    "l": 1.0,
+    "ml": 0.001,
+    "cl": 0.01,
+    "st": 1.0,    # 1 piece
+    "msk": 0.015, # ~15g
+    "tsk": 0.005, # ~5g
+    "krm": 0.001,
+    "port": 1.0,
+    "nypa": 0.001,
+    "knippe": 1.0,
+}
+
+
+def estimate_ingredient_cost(
+    ingredient: Ingredient,
+    offer: Offer | None,
+    servings_scale: float = 1.0,
+) -> tuple[float, float]:
+    """Estimate cost for an ingredient with and without offer.
+
+    Returns (cost_with_offer, cost_without_offer).
+    """
+    if ingredient.is_pantry_staple:
+        return 0.0, 0.0
+
+    amount = ingredient.amount * servings_scale
+    if amount == 0:
+        amount = 1.0  # Default to 1 unit if no amount specified
+
+    if offer:
+        offer_cost = _calculate_offer_cost(amount, ingredient.unit, offer)
+        if offer.original_price:
+            regular_cost = _calculate_regular_cost(
+                amount, ingredient.unit, offer.original_price, offer.unit
+            )
+        else:
+            regular_cost = offer_cost * 1.3  # Assume ~30% savings if no original price
+        return offer_cost, regular_cost
+
+    # No offer match — estimate based on category defaults
+    default_price = DEFAULT_PRICES.get(ingredient.category, 25.0)
+    cost = _estimate_default_cost(amount, ingredient.unit, default_price)
+    return cost, cost  # Same cost (no savings)
+
+
+def _calculate_offer_cost(amount: float, unit: str, offer: Offer) -> float:
+    """Calculate cost using offer price."""
+    if offer.unit == "kr/kg":
+        kg = amount * WEIGHT_PER_UNIT.get(unit, 0.001)
+        return offer.offer_price * kg
+    elif offer.unit == "kr/st" or offer.unit == "kr/förp":
+        # For per-piece pricing, estimate how many pieces needed
+        if unit in ("g", "kg"):
+            # Assume ~500g per piece for meat/fish
+            pieces = max(1, (amount * WEIGHT_PER_UNIT.get(unit, 0.001)) / 0.5)
+            return offer.offer_price * pieces
+        elif unit in ("dl", "l", "ml", "cl"):
+            # Assume ~500ml per piece
+            liters = amount * WEIGHT_PER_UNIT.get(unit, 0.1)
+            pieces = max(1, liters / 0.5)
+            return offer.offer_price * pieces
+        else:
+            return offer.offer_price * max(1, amount)
+    elif offer.unit == "kr/l":
+        liters = amount * WEIGHT_PER_UNIT.get(unit, 0.1)
+        return offer.offer_price * liters
+
+    return offer.offer_price
+
+
+def _calculate_regular_cost(
+    amount: float, unit: str, original_price: float, offer_unit: str
+) -> float:
+    """Calculate cost using original/regular price."""
+    if offer_unit == "kr/kg":
+        kg = amount * WEIGHT_PER_UNIT.get(unit, 0.001)
+        return original_price * kg
+    elif offer_unit in ("kr/st", "kr/förp"):
+        if unit in ("g", "kg"):
+            pieces = max(1, (amount * WEIGHT_PER_UNIT.get(unit, 0.001)) / 0.5)
+            return original_price * pieces
+        elif unit in ("dl", "l", "ml", "cl"):
+            liters = amount * WEIGHT_PER_UNIT.get(unit, 0.1)
+            pieces = max(1, liters / 0.5)
+            return original_price * pieces
+        return original_price * max(1, amount)
+    return original_price
+
+
+def _estimate_default_cost(amount: float, unit: str, default_price: float) -> float:
+    """Estimate cost when no offer exists."""
+    if unit in ("g", "kg"):
+        kg = amount * WEIGHT_PER_UNIT.get(unit, 0.001)
+        return default_price * max(0.1, kg)
+    elif unit in ("dl", "l", "ml", "cl"):
+        liters = amount * WEIGHT_PER_UNIT.get(unit, 0.1)
+        return default_price * max(0.1, liters)
+    elif unit in ("st", "port", "knippe"):
+        return default_price * max(1, amount)
+    else:
+        # Small amounts (msk, tsk, krm) — negligible cost
+        return 2.0 * max(1, amount)
+
+
+def calculate_meal_cost(
+    ingredients: list[Ingredient],
+    offers: list[Offer],
+    servings_scale: float = 1.0,
+) -> tuple[float, float, list[tuple[Ingredient, Offer | None]]]:
+    """Calculate total meal cost with and without offers.
+
+    Returns (cost_with_offers, cost_without_offers, ingredient_offer_matches).
+    """
+    total_offer = 0.0
+    total_regular = 0.0
+    matches = []
+
+    for ing in ingredients:
+        offer = match_ingredient_to_offers(ing, offers)
+        cost_offer, cost_regular = estimate_ingredient_cost(ing, offer, servings_scale)
+        total_offer += cost_offer
+        total_regular += cost_regular
+        matches.append((ing, offer))
+
+    return round(total_offer, 2), round(total_regular, 2), matches

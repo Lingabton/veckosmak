@@ -1,0 +1,17 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/ backend/
+COPY scripts/ scripts/
+
+# Run startup script to seed data if needed, then start server
+COPY docker-entrypoint.sh .
+RUN chmod +x docker-entrypoint.sh
+
+EXPOSE 8000
+
+ENTRYPOINT ["./docker-entrypoint.sh"]

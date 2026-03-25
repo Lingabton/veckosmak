@@ -1,0 +1,13 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#15803d"/>
+  <rect x="0" y="0" width="1200" height="630" fill="url(#grad)"/>
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#15803d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#166534;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <text x="600" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">Veckosmak</text>
+  <text x="600" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="#bbf7d0" text-anchor="middle">Smartare middagar med veckans erbjudanden</text>
+  <text x="600" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#86efac" text-anchor="middle">AI-driven veckomeny | Recept | Inkopslista | Spara pengar</text>
+</svg>

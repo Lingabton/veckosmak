@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: veckosmak-api
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APP_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://veckosmak.vercel.app
+    healthCheckPath: /api/health

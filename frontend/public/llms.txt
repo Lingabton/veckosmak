@@ -1,0 +1,42 @@
+# Veckosmak
+
+> AI-driven menyplanering baserad pa veckans matbutikserbjudanden i Sverige.
+
+Veckosmak ar en gratis webbtjanst som hjalper svenska familjer att planera sin veckomeny och spara pengar pa maten. Tjansten hamtar veckans erbjudanden fran matbutiker, matchar dem mot hundratals recept och genererar en personlig veckomeny optimerad for pris och variation.
+
+## Hur det fungerar
+
+1. Anvandaren valjer hushallsstorlek, antal middagar, budget och kostpreferenser
+2. Veckosmak hamtar aktuella erbjudanden fran anvandarens butik
+3. AI:n matchar erbjudanden mot 300+ recept och skapar en optimerad veckomeny
+4. Anvandaren far en veckomeny med recept, inkopslista och uppskattad besparing
+5. Enskilda recept kan bytas ut om anvandaren vill ha nagot annat
+
+## Funktioner
+
+- Personlig veckomeny (3-7 middagar per vecka)
+- Recept med ingredienser och tillagningsinstruktioner
+- Inkopslista grupperad per butikskategori
+- Besparingsberakning mot ordinarie pris
+- Stod for vegetariskt, veganskt, glutenfritt, mjolkfritt, laktosfritt
+- Mojlighet att ange ingredienser att undvika
+- Budgetinstellning
+
+## Stodda butiker
+
+- ICA Maxi Boglundsangen, Orebro (fler butiker planeras)
+
+## Teknik
+
+- Backend: Python, FastAPI
+- Frontend: React, Vite, Tailwind CSS
+- AI: Anthropic Claude for receptmatchning och menyoptimering
+- Erbjudanden: Scrapade fran butikernas webbsidor
+
+## URL
+
+https://veckosmak.vercel.app/
+
+## Kontakt
+
+Grundare: Gabriel Linton
