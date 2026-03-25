@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     max_menu_generations_per_hour: int = 20
     max_swaps_per_menu: int = 5
+    cloudflare_account_id: str = ""
+    cloudflare_api_token: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

@@ -1,4 +1,4 @@
-"""AI-driven menu optimization using Claude API."""
+"""AI-driven menu optimization — uses free AI (Cloudflare) with Claude fallback."""
 
 import hashlib
 import json
@@ -6,13 +6,12 @@ import logging
 import uuid
 from datetime import datetime
 
-import anthropic
-
 # Cache: hash of (prefs + week + offers) → WeeklyMenu
 _menu_generation_cache: dict[str, "WeeklyMenu"] = {}
 _MENU_CACHE_MAX = 50
 
 from backend.config import get_settings
+from backend.planner.ai_provider import call_ai, parse_json_response
 from backend.models.menu import PlannedMeal, WeeklyMenu
 from backend.models.offer import Offer
 from backend.models.recipe import Ingredient, Recipe
@@ -387,20 +386,7 @@ async def generate_menu(
         menu_data, is_fallback = generate_fallback_menu(offers, eligible, preferences)
 
     if not menu_data:
-        try:
-            client = anthropic.AsyncAnthropic(
-                api_key=settings.anthropic_api_key,
-                timeout=30.0,
-            )
-
-            response = await client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=2000,
-                system=MENU_SYSTEM_PROMPT,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": f"""Veckans erbjudanden:
+        user_message = f"""Veckans erbjudanden:
 {offers_text}
 
 Tillgängliga recept (sorterade efter erbjudande-matchningar):
@@ -411,19 +397,19 @@ Användarens preferenser:
 
 Skapa en veckomeny med {preferences.num_dinners} middagar.
 Välj recept som maximerar erbjudande-matchningar och som varierar i stil.
-Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halva").""",
-                    }
-                ],
-            )
+Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halva")."""
 
-            ai_text = response.content[0].text
-            menu_data = _parse_ai_response(ai_text)
-        except anthropic.APITimeoutError:
-            logger.warning("Claude API timeout — using fallback menu")
-        except anthropic.APIError as e:
-            logger.warning(f"Claude API error: {e} — using fallback menu")
+        try:
+            ai_text = await call_ai(
+                system_prompt=MENU_SYSTEM_PROMPT,
+                user_message=user_message,
+                max_tokens=2000,
+                use_premium=has_complex_prefs,
+            )
+            if ai_text:
+                menu_data = parse_json_response(ai_text)
         except Exception as e:
-            logger.error(f"Unexpected error calling Claude: {e}", exc_info=True)
+            logger.error(f"AI menu generation failed: {e}", exc_info=True)
 
     if not menu_data or not menu_data.get("meals"):
         logger.info("Using fallback menu generator")
@@ -551,16 +537,7 @@ async def swap_recipe(
     offers_text = format_offers_for_prompt(offers)
     recipes_text = format_recipes_for_prompt(eligible, offers)
 
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key, timeout=15.0)
-
-    response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=300,
-        system=SWAP_SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"""Nuvarande recept på {day}: {current_title}
+    user_message = f"""Nuvarande recept på {day}: {current_title}
 Anledning till byte: {reason or 'Vill ha något annat'}
 Övriga rätter i menyn: {', '.join(other_titles)}
 
@@ -570,13 +547,15 @@ Veckans erbjudanden:
 Tillgängliga recept:
 {recipes_text}
 
-Föreslå ETT alternativt recept.""",
-            }
-        ],
-    )
+Föreslå ETT alternativt recept."""
 
-    ai_text = response.content[0].text
-    swap_data = _parse_ai_response(ai_text)
+    ai_text = await call_ai(
+        system_prompt=SWAP_SYSTEM_PROMPT,
+        user_message=user_message,
+        max_tokens=300,
+        use_premium=False,  # Swaps are simple — use free tier
+    )
+    swap_data = parse_json_response(ai_text) if ai_text else {}
 
     recipe_id = swap_data.get("recipe_id", "")
     reasoning = swap_data.get("reasoning", "")
@@ -606,19 +585,6 @@ Föreslå ETT alternativt recept.""",
         popularity_score=_get_crowd_rating(recipe),
     )
 
-
-def _parse_ai_response(text: str) -> dict:
-    text = text.strip()
-    if "```" in text:
-        import re
-        match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
-        if match:
-            text = match.group(1).strip()
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        logger.error(f"Failed to parse AI response as JSON: {text[:200]}")
-        return {"meals": []}
 
 
 def _build_shopping_list(
