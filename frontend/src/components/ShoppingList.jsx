@@ -5,8 +5,8 @@ const CATEGORIES = {
   produce: 'Frukt & grönt', meat: 'Kött & chark', fish: 'Fisk & skaldjur',
   dairy: 'Mejeri & ägg', pantry: 'Skafferi', bakery: 'Bröd', frozen: 'Fryst', other: 'Övrigt',
 }
-// Order matches typical ICA Maxi store layout (entrance → checkout)
-const CATEGORY_ORDER = ['produce', 'bakery', 'pantry', 'dairy', 'meat', 'fish', 'frozen', 'other']
+// Order matches ICA Maxi Boglundsängen, Örebro store layout
+const CATEGORY_ORDER = ['bakery', 'meat', 'fish', 'produce', 'dairy', 'pantry', 'frozen', 'other']
 
 export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
   const [checked, setChecked] = useState(loadChecked)

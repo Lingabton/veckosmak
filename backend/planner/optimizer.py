@@ -635,8 +635,8 @@ def _build_shopping_list(
             )
         )
 
-    # Order matches typical ICA Maxi store layout (entrance → checkout)
-    category_order = ["produce", "bakery", "pantry", "dairy", "meat", "fish", "frozen", "other"]
+    # Order matches ICA Maxi Boglundsängen, Örebro store layout
+    category_order = ["bakery", "meat", "fish", "produce", "dairy", "pantry", "frozen", "other"]
     items.sort(key=lambda x: (category_order.index(x.category) if x.category in category_order else 99, x.ingredient_name))
 
     on_offer = sum(1 for i in items if i.is_on_offer)
