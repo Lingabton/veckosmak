@@ -71,6 +71,7 @@ export function useMenu() {
   const [view, setViewState] = useState('preferences')
   const [copySuccess, setCopySuccess] = useState(false)
   const [expandAll, setExpandAll] = useState(false)
+  const [isReturning] = useState(() => !!localStorage.getItem(STORAGE_KEY))
 
   useEffect(() => {
     const handlePop = () => {
@@ -212,5 +213,6 @@ export function useMenu() {
     generateMenu, goToOffers, swapRecipe, sendFeedback,
     copySuccess, copyToClipboard,
     expandAll, setExpandAll,
+    isReturning,
   }
 }

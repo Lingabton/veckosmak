@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+:root {
+  --green: #15803d;
+  --green-light: #dcfce7;
+  --accent: #e87c1e;
+  --accent-light: #fef3e2;
+  --accent-dark: #c2650f;
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -7,35 +15,74 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Smooth expand/collapse */
+.animate-expand {
+  animation: expand 0.2s ease-out;
+}
+
+@keyframes expand {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 2000px; }
+}
+
+/* Fade in for cards */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Check animation */
+.animate-check {
+  animation: checkPop 0.2s ease-out;
+}
+
+@keyframes checkPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Staggered card entrance */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+.stagger-7 { animation-delay: 0.35s; }
+
+/* Accent button */
+.btn-accent {
+  background-color: var(--accent);
+  color: white;
+  font-weight: 600;
+  transition: background-color 0.15s;
+}
+.btn-accent:hover { background-color: var(--accent-dark); }
+.btn-accent:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Recipe image gradient overlay */
+.recipe-img-overlay {
+  position: relative;
+}
+.recipe-img-overlay::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(transparent, rgba(0,0,0,0.3));
+  pointer-events: none;
+}
+
 @media print {
-  .print\:hidden {
-    display: none !important;
-  }
-
-  .print\:mb-2 {
-    margin-bottom: 0.5rem !important;
-  }
-
-  body {
-    background: white !important;
-  }
-
-  .print-section {
-    padding: 0 !important;
-  }
-
-  /* Make checkboxes visible when printed */
-  input[type="checkbox"] {
-    -webkit-appearance: checkbox !important;
-    appearance: checkbox !important;
-  }
-
-  /* Remove shadows and borders for cleaner print */
-  .shadow-sm {
-    box-shadow: none !important;
-  }
-
-  .rounded-xl, .rounded-lg {
-    border-radius: 0 !important;
-  }
+  .print\:hidden { display: none !important; }
+  .print\:mb-2 { margin-bottom: 0.5rem !important; }
+  body { background: white !important; }
+  .shadow-sm { box-shadow: none !important; }
 }
