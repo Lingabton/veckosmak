@@ -640,7 +640,19 @@ def _build_shopping_list(
 ) -> ShoppingList:
     from backend.planner.savings import estimate_ingredient_cost
 
+    import re as _re
     aggregated: dict[str, dict] = {}
+
+    def _normalize_key(name: str) -> str:
+        """Normalize ingredient name for deduplication."""
+        n = name.lower().strip()
+        # Remove leading amounts/numbers
+        n = _re.sub(r'^\d+[\s/½¼¾]*\s*', '', n)
+        # Remove parenthetical info
+        n = _re.sub(r'\(.*?\)', '', n)
+        # Remove common prefixes
+        n = _re.sub(r'^(färsk|riven|kokt|strimla|hackad|tärnad|skivad)\s+', '', n)
+        return n.strip()
 
     for meal in meals:
         servings_scale = _get_servings_scale(meal.recipe, household_size)
@@ -648,16 +660,17 @@ def _build_shopping_list(
             if ing.is_pantry_staple:
                 continue
 
-            key = ing.name.lower().strip()
+            key = _normalize_key(ing.name)
             scaled_amount = ing.amount * servings_scale
 
             if key in aggregated:
                 aggregated[key]["amount"] += scaled_amount
+                aggregated[key]["price"] += estimate_ingredient_cost(ing, aggregated[key]["offer"], servings_scale)[0]
+                if meal.recipe.title not in aggregated[key]["used_in"]:
+                    aggregated[key]["used_in"].append(meal.recipe.title)
             else:
                 offer = match_ingredient_to_offers(ing, offers)
-                cost_with, cost_without = estimate_ingredient_cost(
-                    ing, offer, servings_scale
-                )
+                cost_with, cost_without = estimate_ingredient_cost(ing, offer, servings_scale)
                 aggregated[key] = {
                     "name": ing.name,
                     "amount": scaled_amount,
@@ -665,6 +678,7 @@ def _build_shopping_list(
                     "category": ing.category,
                     "offer": offer,
                     "price": cost_with,
+                    "used_in": [meal.recipe.title],
                 }
 
     items = []
@@ -678,6 +692,7 @@ def _build_shopping_list(
                 matched_offer=data["offer"],
                 estimated_price=round(data["price"], 2),
                 is_on_offer=data["offer"] is not None,
+                used_in=data["used_in"],
             )
         )
 

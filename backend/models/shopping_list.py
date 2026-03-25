@@ -12,6 +12,7 @@ class ShoppingItem(BaseModel):
     matched_offer: Optional[Offer] = None
     estimated_price: float
     is_on_offer: bool = False
+    used_in: list[str] = []         # Recipe titles this ingredient is for
 
 
 class ShoppingList(BaseModel):

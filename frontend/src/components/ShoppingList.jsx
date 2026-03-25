@@ -133,6 +133,11 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
                             {item.matched_offer.quantity_deal && <span> ({item.matched_offer.quantity_deal})</span>}
                           </p>
                         )}
+                        {item.used_in && item.used_in.length > 0 && (
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                            {item.used_in.join(', ')}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {item.is_on_offer && (
