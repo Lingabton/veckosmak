@@ -134,6 +134,21 @@ async def scrape_offers(store_id: str = "ica-maxi-1004097"):
     return {"scraped": len(offers)}
 
 
+@app.post("/api/recipes/scrape")
+async def scrape_recipes_endpoint(max_recipes: int = 100):
+    """Scrape recipes from ica.se and save to DB."""
+    from backend.recipes.scraper import scrape_all_recipes
+    from backend.db.database import save_recipes
+    try:
+        recipes = await scrape_all_recipes(max_recipes=max_recipes)
+        if recipes:
+            await save_recipes(recipes)
+        return {"scraped": len(recipes)}
+    except Exception as e:
+        logger.error(f"Recipe scraping failed: {e}", exc_info=True)
+        raise HTTPException(status_code=502, detail="Kunde inte scrapa recept just nu.")
+
+
 @app.get("/api/recipes")
 async def list_recipes(tags: str | None = None, diet: str | None = None, max_time: int | None = None):
     recipes = await get_all_recipes()
