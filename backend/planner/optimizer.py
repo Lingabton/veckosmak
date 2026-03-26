@@ -672,14 +672,24 @@ def _build_shopping_list(
     import re as _re
     aggregated: dict[str, dict] = {}
 
+    # Things that are NOT ingredients
+    NOT_INGREDIENTS = [
+        'stektermometer', 'bakplåtspapper', 'plastfolie', 'aluminiumfolie',
+        'grillspett', 'tandpetare', 'matlagningstermometer', 'ugnsform',
+        'kastrull', 'stekpanna', 'mixer', 'stavmixer', 'bakform',
+        'muffinsform', 'springform', 'plåt', 'folie', 'film',
+        'gärna', 'eventuellt', 'garnering', 'till servering',
+    ]
+
+    def _is_not_ingredient(name: str) -> bool:
+        n = name.lower()
+        return any(kw in n for kw in NOT_INGREDIENTS)
+
     def _normalize_key(name: str) -> str:
         """Normalize ingredient name for deduplication."""
         n = name.lower().strip()
-        # Remove leading amounts/numbers
         n = _re.sub(r'^\d+[\s/½¼¾]*\s*', '', n)
-        # Remove parenthetical info
         n = _re.sub(r'\(.*?\)', '', n)
-        # Remove common prefixes
         n = _re.sub(r'^(färsk|riven|kokt|strimla|hackad|tärnad|skivad)\s+', '', n)
         return n.strip()
 
@@ -687,6 +697,8 @@ def _build_shopping_list(
         servings_scale = _get_servings_scale(meal.recipe, household_size)
         for ing in meal.recipe.ingredients:
             if ing.is_pantry_staple:
+                continue
+            if _is_not_ingredient(ing.name):
                 continue
 
             key = _normalize_key(ing.name)
