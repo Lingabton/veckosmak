@@ -80,48 +80,64 @@ PAGES_PER_CATEGORY = 3
 
 PANTRY_STAPLES = {
     "salt", "peppar", "svartpeppar", "olja", "olivolja", "rapsolja", "smör",
-    "socker", "strösocker", "vatten", "vitpeppar", "malen peppar",
+    "socker", "strösocker", "vatten", "kallt vatten", "ljummet vatten",
+    "kokande vatten", "vitpeppar", "malen peppar",
 }
 
-INGREDIENT_CATEGORY_MAP = {
-    "kyckling": "meat", "kycklingfilé": "meat", "kycklinglår": "meat",
-    "kycklingklubba": "meat", "nötfärs": "meat", "blandfärs": "meat",
-    "fläskfärs": "meat", "färs": "meat", "fläskfilé": "meat",
-    "fläskkarré": "meat", "fläskkotlett": "meat", "bacon": "meat",
-    "skinka": "meat", "falukorv": "meat", "korv": "meat", "kassler": "meat",
-    "köttbullar": "meat", "entrecôte": "meat", "biff": "meat",
-    "kalkon": "meat", "lamm": "meat", "chorizo": "meat", "pancetta": "meat",
-    "prosciutto": "meat",
-    "lax": "fish", "laxfilé": "fish", "torsk": "fish", "torskfilé": "fish",
-    "räkor": "fish", "sej": "fish", "tonfisk": "fish", "fisk": "fish",
-    "sill": "fish", "makrill": "fish", "pangasius": "fish",
-    "mjölk": "dairy", "grädde": "dairy", "vispgrädde": "dairy",
-    "matlagningsgrädde": "dairy", "crème fraiche": "dairy",
-    "gräddfil": "dairy", "yoghurt": "dairy", "kvarg": "dairy",
-    "ost": "dairy", "riven ost": "dairy", "mozzarella": "dairy",
-    "parmesan": "dairy", "smör": "dairy", "ägg": "dairy",
-    "potatis": "produce", "morot": "produce", "morötter": "produce",
-    "lök": "produce", "gul lök": "produce", "rödlök": "produce",
-    "vitlök": "produce", "tomat": "produce", "tomater": "produce",
-    "paprika": "produce", "gurka": "produce", "broccoli": "produce",
-    "blomkål": "produce", "spenat": "produce", "sallad": "produce",
-    "purjolök": "produce", "squash": "produce", "zucchini": "produce",
-    "avokado": "produce", "champinjoner": "produce", "svamp": "produce",
-    "selleri": "produce", "citron": "produce", "lime": "produce",
-    "ingefära": "produce", "chili": "produce",
-    "pasta": "pantry", "spaghetti": "pantry", "penne": "pantry",
-    "ris": "pantry", "bulgur": "pantry", "couscous": "pantry",
-    "mjöl": "pantry", "vetemjöl": "pantry", "tomatpuré": "pantry",
-    "krossade tomater": "pantry", "passerade tomater": "pantry",
-    "kokosmjölk": "pantry", "soja": "pantry", "buljong": "pantry",
-    "fond": "pantry", "dijonsenap": "pantry", "senap": "pantry",
-    "vinäger": "pantry", "honung": "pantry", "ströbröd": "pantry",
-}
+# Order matters! More specific matches MUST come before generic ones.
+# "kycklingfond" must match "fond" (pantry) before "kyckling" (meat).
+INGREDIENT_CATEGORY_MAP_ORDERED = [
+    # Pantry — check FIRST (before proteins catch "kycklingfond" etc)
+    ("kycklingfond", "pantry"), ("kyckling fond", "pantry"),
+    ("kalvfond", "pantry"), ("grönsaksfond", "pantry"),
+    ("fond", "pantry"), ("buljong", "pantry"),
+    ("tomatpuré", "pantry"), ("krossade tomater", "pantry"),
+    ("passerade tomater", "pantry"), ("kokosmjölk", "pantry"),
+    ("soja", "pantry"), ("dijonsenap", "pantry"), ("senap", "pantry"),
+    ("vinäger", "pantry"), ("honung", "pantry"), ("ströbröd", "pantry"),
+    ("pasta", "pantry"), ("spaghetti", "pantry"), ("penne", "pantry"),
+    ("ris", "pantry"), ("bulgur", "pantry"), ("couscous", "pantry"),
+    ("mjöl", "pantry"), ("vetemjöl", "pantry"),
+    # Herbs & produce
+    ("basilika", "produce"), ("koriander", "produce"), ("persilja", "produce"),
+    ("dill", "produce"), ("rosmarin", "produce"), ("timjan", "produce"),
+    ("mynta", "produce"), ("oregano", "produce"), ("gräslök", "produce"),
+    ("rucola", "produce"),
+    ("potatis", "produce"), ("morot", "produce"), ("morötter", "produce"),
+    ("lök", "produce"), ("gul lök", "produce"), ("rödlök", "produce"),
+    ("vitlök", "produce"), ("tomat", "produce"), ("tomater", "produce"),
+    ("paprika", "produce"), ("gurka", "produce"), ("broccoli", "produce"),
+    ("blomkål", "produce"), ("spenat", "produce"), ("sallad", "produce"),
+    ("purjolök", "produce"), ("squash", "produce"), ("zucchini", "produce"),
+    ("avokado", "produce"), ("champinjoner", "produce"), ("svamp", "produce"),
+    ("selleri", "produce"), ("citron", "produce"), ("lime", "produce"),
+    ("ingefära", "produce"), ("chili", "produce"),
+    # Meat
+    ("kyckling", "meat"), ("kycklingfilé", "meat"), ("kycklinglår", "meat"),
+    ("kycklingklubba", "meat"), ("nötfärs", "meat"), ("blandfärs", "meat"),
+    ("fläskfärs", "meat"), ("färs", "meat"), ("fläskfilé", "meat"),
+    ("fläskkarré", "meat"), ("fläskkotlett", "meat"), ("bacon", "meat"),
+    ("skinka", "meat"), ("falukorv", "meat"), ("korv", "meat"), ("kassler", "meat"),
+    ("köttbullar", "meat"), ("entrecôte", "meat"), ("biff", "meat"),
+    ("kalkon", "meat"), ("lamm", "meat"), ("chorizo", "meat"),
+    ("pancetta", "meat"), ("prosciutto", "meat"),
+    # Fish
+    ("lax", "fish"), ("laxfilé", "fish"), ("torsk", "fish"), ("torskfilé", "fish"),
+    ("räkor", "fish"), ("sej", "fish"), ("tonfisk", "fish"), ("fisk", "fish"),
+    ("sill", "fish"), ("makrill", "fish"), ("pangasius", "fish"),
+    # Dairy
+    ("mjölk", "dairy"), ("grädde", "dairy"), ("vispgrädde", "dairy"),
+    ("matlagningsgrädde", "dairy"), ("crème fraiche", "dairy"),
+    ("gräddfil", "dairy"), ("yoghurt", "dairy"), ("kvarg", "dairy"),
+    ("ost", "dairy"), ("riven ost", "dairy"), ("mozzarella", "dairy"),
+    ("parmesan", "dairy"), ("smör", "dairy"), ("ägg", "dairy"),
+]
 
 
 def classify_ingredient(name: str) -> str:
+    """Classify ingredient by category. Uses ordered list — most specific first."""
     name_lower = name.lower().strip()
-    for key, cat in INGREDIENT_CATEGORY_MAP.items():
+    for key, cat in INGREDIENT_CATEGORY_MAP_ORDERED:
         if key in name_lower:
             return cat
     return "other"

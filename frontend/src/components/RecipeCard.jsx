@@ -5,8 +5,11 @@ const DAY_NAMES = {
   thursday: 'Torsdag', friday: 'Fredag', saturday: 'Lördag', sunday: 'Söndag',
 }
 
-function kitchenRound(amount, unit) {
+function kitchenRound(amount, unit, name = '') {
   if (amount <= 0) return 0
+  // Skip silly items
+  const nameLower = name.toLowerCase()
+  if (nameLower.includes('vatten')) return 0 // Don't list water
   if (['dl', 'msk', 'tsk'].includes(unit)) return amount <= 0.5 ? 0.5 : Math.round(amount * 2) / 2
   if (unit === 'g') return amount < 50 ? Math.round(amount / 5) * 5 : amount < 500 ? Math.round(amount / 25) * 25 : Math.round(amount / 50) * 50
   return Math.round(amount * 10) / 10
@@ -145,7 +148,8 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
             <h4 className="font-medium text-sm mb-2">Ingredienser <span style={{ color: 'var(--text-muted)' }}>({scaled_servings} port)</span></h4>
             <ul className="text-sm space-y-0.5 mb-4" style={{ color: 'var(--text-secondary)' }}>
               {recipe.ingredients.map((ing, i) => {
-                const amt = kitchenRound(ing.amount * scale, ing.unit)
+                const amt = kitchenRound(ing.amount * scale, ing.unit, ing.name)
+                if (amt === 0 && ing.amount > 0 && ing.name.toLowerCase().includes('vatten')) return null
                 return <li key={i}>{amt > 0 && <span style={{ color: 'var(--text-muted)' }}>{amt} {ing.unit} </span>}{ing.name}</li>
               })}
             </ul>
