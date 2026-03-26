@@ -104,7 +104,11 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
       {isExpanded && (
         <div className="px-4 pb-4 expand" style={{borderTop:'1px solid var(--color-border-light)'}}>
           <div className="pt-4">
-            {reasoning && <p className="text-sm italic mb-3" style={{color:'var(--color-text-muted)'}}>{reasoning}</p>}
+            {reasoning && (
+              <div className="text-xs p-2.5 rounded-lg mb-3" style={{background:'var(--color-bg)',color:'var(--color-text-secondary)'}}>
+                <b style={{color:'var(--color-brand)'}}>Varför detta recept:</b> {reasoning}
+              </div>
+            )}
 
             {recipe.nutrition && (
               <div className="flex gap-2 mb-3">

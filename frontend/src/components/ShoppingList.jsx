@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { loadChecked, saveChecked } from '../hooks/useMenu'
+import { loadChecked, saveChecked, loadHaveAtHome, saveHaveAtHome } from '../hooks/useMenu'
 
 const CATEGORIES = {
   produce: 'Frukt & grönt', meat: 'Kött & chark', fish: 'Fisk & skaldjur',
@@ -21,9 +21,12 @@ const CAT_COLORS = {
 export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
   const [checked, setChecked] = useState(loadChecked)
   const [customItems, setCustomItems] = useState(loadCustom)
+  const [haveAtHome, setHaveAtHome] = useState(loadHaveAtHome)
   const [newItem, setNewItem] = useState('')
+  const [showHaveAtHome, setShowHaveAtHome] = useState(false)
   useEffect(() => { saveChecked(checked) }, [checked])
   useEffect(() => { saveCustom(customItems) }, [customItems])
+  useEffect(() => { saveHaveAtHome(haveAtHome) }, [haveAtHome])
   if (!menu?.shopping_list) return null
 
   const addCustom = (name) => {
@@ -37,7 +40,9 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
   }
 
   const { items, total_estimated_cost, items_on_offer } = menu.shopping_list
-  const allItems = [...items, ...customItems.map(name => ({
+  const homeSet = new Set(haveAtHome.map(h => h.toLowerCase()))
+  const filteredItems = items.filter(i => !homeSet.has(i.ingredient_name.toLowerCase()))
+  const allItems = [...filteredItems, ...customItems.map(name => ({
     ingredient_name: name, total_amount: 0, unit: '', category: 'custom',
     estimated_price: 0, is_on_offer: false, matched_offer: null, used_in: [],
   }))]
@@ -187,8 +192,39 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
         })}
       </div>
 
+      {/* Have at home — exclude from list */}
+      <div className="mt-6">
+        <button onClick={() => setShowHaveAtHome(!showHaveAtHome)}
+          className="text-sm font-medium" style={{color:'var(--color-text-muted)'}}>
+          {showHaveAtHome ? 'Dölj "Har hemma" ▲' : `Har hemma${haveAtHome.length ? ` (${haveAtHome.length})`:''} ▼`}
+        </button>
+        {showHaveAtHome && (
+          <div className="card p-4 mt-2 expand">
+            <p className="text-xs mb-2" style={{color:'var(--color-text-muted)'}}>
+              Ingredienser du redan har — dras av från listan
+            </p>
+            {haveAtHome.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {haveAtHome.map(item => (
+                  <span key={item} className="btn-pill text-xs active flex items-center gap-1">
+                    {item}
+                    <button onClick={() => setHaveAtHome(haveAtHome.filter(h => h !== item))} className="ml-0.5">✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-1.5 flex-wrap">
+              {['Ris','Pasta','Olivolja','Mjöl','Ströbröd','Potatis','Lök','Vitlök','Smör'].filter(i => !haveAtHome.includes(i)).slice(0,6).map(item => (
+                <button key={item} onClick={() => setHaveAtHome([...haveAtHome, item])}
+                  className="btn-pill text-xs">{item}</button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Add custom items */}
-      <div className="mt-8 card p-4">
+      <div className="mt-4 card p-4">
         <p className="font-bold text-sm mb-3">Lägg till egna varor</p>
         <div className="flex gap-1.5 flex-wrap mb-3">
           {QUICK_ADD.filter(q => !customItems.includes(q)).slice(0, 6).map(q => (

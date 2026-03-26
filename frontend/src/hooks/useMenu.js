@@ -3,6 +3,9 @@ import { useState, useCallback, useEffect } from 'react'
 const STORAGE_KEY = 'veckosmak_preferences'
 const CHECKED_KEY = 'veckosmak_checked'
 const MENU_KEY = 'veckosmak_menu'
+const HISTORY_KEY = 'veckosmak_history'
+const SAVINGS_KEY = 'veckosmak_total_savings'
+const HAVE_AT_HOME_KEY = 'veckosmak_have_at_home'
 
 const DEFAULT_PREFS = {
   household_size: 4,
@@ -49,6 +52,37 @@ function setHashForView(view) {
   }
 }
 
+// Menu history — last 10 menus
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') } catch { return [] }
+}
+function saveToHistory(menu) {
+  try {
+    const history = loadHistory()
+    history.unshift({ id: menu.id, date: menu.generated_at, store: menu.store_name, cost: menu.total_cost, savings: menu.total_savings, meals: menu.meals?.length })
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 10)))
+  } catch {}
+}
+
+// Total savings tracker
+function addSavings(amount) {
+  try {
+    const current = parseFloat(localStorage.getItem(SAVINGS_KEY) || '0')
+    localStorage.setItem(SAVINGS_KEY, String(Math.round((current + amount) * 100) / 100))
+  } catch {}
+}
+export function getTotalSavings() {
+  try { return parseFloat(localStorage.getItem(SAVINGS_KEY) || '0') } catch { return 0 }
+}
+
+// Have at home
+export function loadHaveAtHome() {
+  try { return JSON.parse(localStorage.getItem(HAVE_AT_HOME_KEY) || '[]') } catch { return [] }
+}
+export function saveHaveAtHome(items) {
+  localStorage.setItem(HAVE_AT_HOME_KEY, JSON.stringify(items))
+}
+
 export function loadChecked() {
   try {
     const saved = localStorage.getItem(CHECKED_KEY)
@@ -73,6 +107,8 @@ export function useMenu() {
   const [expandAll, setExpandAll] = useState(false)
   const [isReturning] = useState(() => !!localStorage.getItem(STORAGE_KEY))
   const [bonusOffers, setBonusOffers] = useState([])
+  const [menuHistory] = useState(loadHistory)
+  const [totalSavings, setTotalSavings] = useState(getTotalSavings)
 
   // Load saved menu from localStorage
   const [menu, setMenuState] = useState(() => {
@@ -182,6 +218,12 @@ export function useMenu() {
       setMenu(data)
       saveChecked({})
       localStorage.removeItem('veckosmak_custom_items')
+      // Track history and savings
+      saveToHistory(data)
+      if (data.total_savings > 0) {
+        addSavings(data.total_savings)
+        setTotalSavings(getTotalSavings())
+      }
       // Track menu generation
       window.plausible?.('Menu Generated', { props: { meals: data.meals?.length, savings: Math.round(data.total_savings) } })
       // Fetch bonus offers (non-blocking)
@@ -248,5 +290,6 @@ export function useMenu() {
     copySuccess, copyToClipboard,
     expandAll, setExpandAll,
     isReturning, bonusOffers,
+    menuHistory, totalSavings,
   }
 }

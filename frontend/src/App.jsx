@@ -15,6 +15,7 @@ function App() {
     copySuccess, copyToClipboard,
     expandAll, setExpandAll,
     isReturning, bonusOffers,
+    menuHistory, totalSavings,
   } = useMenu()
 
   return (
@@ -55,6 +56,7 @@ function App() {
               goToOffers={goToOffers} generateMenu={generateMenu}
               loading={loading} isReturning={isReturning}
               menu={menu} setView={setView}
+              totalSavings={totalSavings} menuHistory={menuHistory}
             />
           ) : view === 'offers' ? (
             <TopOffers

@@ -108,7 +108,7 @@ function ProductPreview() {
   )
 }
 
-export default function PreferencesForm({ preferences, setPreferences, goToOffers, generateMenu, loading, isReturning, menu, setView }) {
+export default function PreferencesForm({ preferences, setPreferences, goToOffers, generateMenu, loading, isReturning, menu, setView, totalSavings, menuHistory }) {
   const [showMore, setShowMore] = useState(false)
   const update = (k,v) => setPreferences({...preferences,[k]:v})
   const toggle = (k,v) => {const c=preferences[k]||[];update(k,c.includes(v)?c.filter(d=>d!==v):[...c,v])}
@@ -132,13 +132,23 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
         </div>
       </section>
 
-      {/* Saved menu shortcut */}
+      {/* Saved menu + savings tracker */}
       {menu && (
         <div className="card p-5 mb-6 fade-in">
-          <p className="font-bold mb-1">Du har en sparad meny</p>
-          <p className="text-sm mb-3" style={{color:'var(--color-text-muted)'}}>
-            {menu.store_name||'ICA'} · {menu.meals?.length} middagar · ~{Math.round(menu.total_cost)} kr
-          </p>
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="font-bold">Din veckomeny</p>
+              <p className="text-sm" style={{color:'var(--color-text-muted)'}}>
+                {menu.store_name||'ICA'} · {menu.meals?.length} middagar · ~{Math.round(menu.total_cost)} kr
+              </p>
+            </div>
+            {totalSavings > 0 && (
+              <div className="text-right">
+                <p className="text-xs" style={{color:'var(--color-text-muted)'}}>Totalt sparat</p>
+                <p className="font-bold" style={{color:'var(--color-brand)'}}>{Math.round(totalSavings)} kr</p>
+              </div>
+            )}
+          </div>
           <div className="flex gap-2">
             <button onClick={()=>setView('shopping')} className="btn btn-primary flex-1 py-3">Inköpslista</button>
             <button onClick={()=>setView('menu')} className="btn btn-secondary flex-1 py-3">Visa meny</button>
