@@ -166,8 +166,17 @@ _scrape_all_status = {"running": False, "progress": 0, "total": 0, "scraped": 0,
 
 
 @app.post("/api/cron/scrape-all")
-async def cron_scrape_all(key: str = "", batch_size: int = 20):
-    """Scrape ALL stores in background. Call from cron weekly."""
+async def cron_scrape_all(key: str = "", types: str = "", batch_size: int = 20):
+    """Scrape stores by type in background.
+
+    Schedule as separate cron jobs:
+      06:05 — POST /api/cron/scrape-all?types=maxi,kvantum&key=SECRET
+      07:05 — POST /api/cron/scrape-all?types=supermarket&key=SECRET
+      07:45 — POST /api/cron/scrape-all?types=nara&key=SECRET
+
+    Or scrape all at once:
+      POST /api/cron/scrape-all?key=SECRET
+    """
     import asyncio
     expected = settings.cron_secret
     if expected and key != expected:
@@ -178,10 +187,21 @@ async def cron_scrape_all(key: str = "", batch_size: int = 20):
 
     from backend.scrapers.store_registry import STORE_REGISTRY
 
+    # Filter by type if specified
+    type_filter = [t.strip() for t in types.split(",") if t.strip()] if types else []
+    store_ids = [
+        sid for sid, s in STORE_REGISTRY.items()
+        if not type_filter or s.get("type") in type_filter
+    ]
+
+    if not store_ids:
+        return {"status": "error", "detail": f"No stores found for types: {types}"}
+
+    type_label = types or "all"
+
     async def scrape_background():
         scraper = IcaMaxiScraper()
-        store_ids = list(STORE_REGISTRY.keys())
-        _scrape_all_status.update({"running": True, "progress": 0, "total": len(store_ids), "scraped": 0, "failed": 0})
+        _scrape_all_status.update({"running": True, "progress": 0, "total": len(store_ids), "scraped": 0, "failed": 0, "types": type_label})
 
         for i in range(0, len(store_ids), batch_size):
             batch = store_ids[i:i + batch_size]
@@ -196,15 +216,14 @@ async def cron_scrape_all(key: str = "", batch_size: int = 20):
                     logger.debug(f"Scrape failed for {store_id}: {e}")
                 _scrape_all_status["progress"] += 1
 
-            # Be polite — pause between batches
             await asyncio.sleep(2)
-            logger.info(f"Scrape-all progress: {_scrape_all_status['progress']}/{len(store_ids)}")
+            logger.info(f"Scrape [{type_label}]: {_scrape_all_status['progress']}/{len(store_ids)}")
 
         _scrape_all_status["running"] = False
-        logger.info(f"Scrape-all complete: {_scrape_all_status['scraped']} offers from {_scrape_all_status['progress']} stores")
+        logger.info(f"Scrape [{type_label}] complete: {_scrape_all_status['scraped']} offers from {_scrape_all_status['progress']} stores ({_scrape_all_status['failed']} failed)")
 
     asyncio.create_task(scrape_background())
-    return {"status": "started", "total_stores": len(STORE_REGISTRY)}
+    return {"status": "started", "types": type_label, "stores": len(store_ids)}
 
 
 @app.get("/api/cron/scrape-all/status")
