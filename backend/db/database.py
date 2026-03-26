@@ -37,7 +37,11 @@ async def _sqlite_connect():
 
 async def init_db():
     if _is_postgres():
-        await _pg_init()
+        try:
+            await _pg_init()
+        except Exception as e:
+            # PG connection may fail during Docker build — retry on first request
+            logger.warning(f"PostgreSQL init failed (will retry on first request): {e}")
     else:
         await _sqlite_init()
 
@@ -70,12 +74,24 @@ async def _pg_get_pool():
     global _pg_pool
     if _pg_pool is None:
         import asyncpg
-        # Clean connection string — remove unsupported params
+        import ssl as _ssl
         dsn = get_settings().database_url
-        dsn = dsn.replace("&channel_binding=require", "").replace("?channel_binding=require", "?")
-        if dsn.endswith("?"):
-            dsn = dsn[:-1]
-        _pg_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, ssl="require")
+        # Remove unsupported params
+        dsn = dsn.replace("&channel_binding=require", "").replace("?channel_binding=require&", "?")
+        dsn = dsn.replace("?channel_binding=require", "")
+        # Also handle sslmode in DSN — asyncpg uses ssl parameter instead
+        if "sslmode=require" in dsn:
+            dsn = dsn.replace("?sslmode=require&", "?").replace("&sslmode=require", "").replace("?sslmode=require", "")
+        if dsn.endswith("?") or dsn.endswith("&"):
+            dsn = dsn.rstrip("?&")
+
+        ssl_ctx = _ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = _ssl.CERT_NONE
+
+        logger.info(f"Connecting to PostgreSQL: {dsn[:50]}...")
+        _pg_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, ssl=ssl_ctx)
+        logger.info("PostgreSQL pool created")
     return _pg_pool
 
 
