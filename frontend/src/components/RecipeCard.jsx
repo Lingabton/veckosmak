@@ -26,11 +26,11 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
     setLoadingAlts(true)
     try {
       const r = await fetch('/api/menu/alternatives', {method:'POST',headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({menu_id:meal._menuId||'',day})})
+        body: JSON.stringify({menu_id: meal._menuId||'', day, exclude_recipe_ids: meal._allRecipeIds||[]})})
       if (r.ok) { const d = await r.json(); setAlts(d.alternatives||[]) }
     } catch {}
     setLoadingAlts(false)
-  }, [day, alts, meal._menuId])
+  }, [day, alts, meal._menuId, meal._allRecipeIds])
 
   return (
     <article className={`card card-interactive overflow-hidden fade-up delay-${(index||0)+1}`}>

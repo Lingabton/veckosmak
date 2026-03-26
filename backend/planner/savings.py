@@ -28,6 +28,11 @@ PREMIUM_PRICES = {
     "lammfilé": 400.0,
     "lammstek": 300.0,
     "lamm kotlett": 350.0,
+    "lammlägg": 250.0,
+    "lammfärs": 200.0,
+    "lammkorv": 200.0,
+    "lammbog": 200.0,
+    "lamm": 280.0,          # Generic lamb — catch-all
     "kalvfilé": 450.0,
     "ankbröst": 350.0,
     "viltfilé": 400.0,

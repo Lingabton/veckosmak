@@ -330,10 +330,11 @@ async def generate_weekly_menu(preferences: UserPreferences, request: Request):
 
 
 class SwapRequest(BaseModel):
-    menu_id: str
-    day: str
+    menu_id: str = ""
+    day: str = ""
     reason: str = ""
-    recipe_id: str = ""  # If user chose a specific alternative
+    recipe_id: str = ""
+    exclude_recipe_ids: list[str] = []
 
 
 @app.post("/api/menu/alternatives")
@@ -344,18 +345,23 @@ async def get_swap_alternatives(req: SwapRequest):
     from backend.planner.savings import calculate_meal_cost
     import random
 
-    menu = _menu_cache.get(req.menu_id)
-    if not menu:
-        raise HTTPException(status_code=404, detail="Menyn hittades inte.")
+    menu = _menu_cache.get(req.menu_id) if req.menu_id else None
 
-    raw_offers = await get_current_offers(menu.store_id)
+    # Get store_id and preferences — from cache or from request context
+    store_id = menu.store_id if menu else "ica-maxi-1004097"
+    prefs = menu.preferences if menu else UserPreferences()
+
+    raw_offers = await get_current_offers(store_id)
     raw_recipes = await get_all_recipes()
     offers = [_db_offer_to_model(o) for o in raw_offers]
     recipes = [_db_recipe_to_model(r) for r in raw_recipes]
 
-    current_ids = {m.recipe.id for m in menu.meals}
-    eligible = [r for r in recipes if r.id not in current_ids]
-    eligible = filter_recipes_by_preferences(eligible, menu.preferences)
+    # Exclude current menu recipes
+    exclude_ids = set(req.exclude_recipe_ids) if req.exclude_recipe_ids else set()
+    if menu:
+        exclude_ids.update(m.recipe.id for m in menu.meals)
+    eligible = [r for r in recipes if r.id not in exclude_ids]
+    eligible = filter_recipes_by_preferences(eligible, prefs)
 
     # Score and pick top candidates with some randomization
     scored = []
@@ -374,9 +380,10 @@ async def get_swap_alternatives(req: SwapRequest):
 
     results = []
     for recipe, matches, score in candidates:
-        scale = _get_servings_scale(recipe, menu.preferences.household_size)
+        hs = prefs.household_size or 4
+        scale = _get_servings_scale(recipe, hs)
         cost_w, cost_wo, _ = calculate_meal_cost(recipe.ingredients, offers, scale)
-        pp = round(cost_w / menu.preferences.household_size) if menu.preferences.household_size > 0 else 0
+        pp = round(cost_w / hs) if hs > 0 else 0
         is_favorite = recipe.rating and recipe.rating >= 4.0 and (recipe.rating_count or 0) >= 50
         results.append({
             "recipe_id": recipe.id,

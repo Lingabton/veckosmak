@@ -53,7 +53,7 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
 
       <div className="grid gap-5 sm:grid-cols-2">
         {menu.meals.map((meal, i) => (
-          <RecipeCard key={meal.day} meal={{...meal, _menuId: menu.id}} onSwap={onSwap} swapping={swapping}
+          <RecipeCard key={meal.day} meal={{...meal, _menuId: menu.id, _allRecipeIds: menu.meals.map(m=>m.recipe.id)}} onSwap={onSwap} swapping={swapping}
             onFeedback={onFeedback} forceExpand={expandAll} index={i} />
         ))}
       </div>
