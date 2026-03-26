@@ -24,7 +24,7 @@ function App() {
           <a href="/" onClick={(e) => { e.preventDefault(); setView(menu ? 'menu' : 'preferences') }}
             className="flex items-baseline gap-2 text-white hover:opacity-90 transition-opacity">
             <span className="text-xl font-bold tracking-tight">veckosmak</span>
-            <span className="text-sm text-green-300 hidden sm:inline">smartare middagar</span>
+            <span className="text-sm text-green-300 hidden sm:inline">från erbjudande till middag</span>
           </a>
           {menu && (
             <nav className="flex gap-1">
