@@ -461,13 +461,43 @@ async def submit_feedback(req: FeedbackRequest):
     return {"status": "ok"}
 
 
+BONUS_CATEGORIES = {
+    "frukost": {
+        "label": "Frukost",
+        "keywords": ["yoghurt", "müsli", "flingor", "juice", "ägg", "ost", "smör",
+                      "bregott", "fil", "kvarg", "havre", "marmelad", "sylt", "honung",
+                      "mjölk", "apelsin"],
+        "max": 3,
+    },
+    "frukt": {
+        "label": "Frukt & mellanmål",
+        "keywords": ["banan", "äpple", "päron", "clementin", "druv", "mango",
+                      "ananas", "melon", "bär", "nötter", "mandel", "frukt",
+                      "avokado", "smoothie", "bar "],
+        "max": 3,
+    },
+    "fika": {
+        "label": "Fika & snacks",
+        "keywords": ["kaffe", "te ", "kex", "choklad", "kaka", "bulle", "chips",
+                      "godis", "glass", "läsk", "saft", "dryck", "cookie"],
+        "max": 3,
+    },
+    "hushal": {
+        "label": "Bra att ha",
+        "keywords": ["toapapper", "hushålls", "tvättmedel", "diskmedel", "servett",
+                      "påse", "folie", "blöja", "schampo", "tandkräm", "tvål",
+                      "rengöring", "sköljmedel"],
+        "max": 2,
+    },
+}
+
+
 @app.get("/api/offers/bonus")
 async def bonus_offers(menu_id: str = "", store_id: str = "ica-maxi-1004097"):
-    """Return good deals NOT used in the menu — 'passa på' offers."""
+    """Return curated deals NOT used in the menu, grouped by category."""
     raw_offers = await get_current_offers(store_id)
     offers = [_db_offer_to_model(o) for o in raw_offers]
 
-    # Find which offer IDs are already used in the menu
     used_ids = set()
     menu = _menu_cache.get(menu_id)
     if menu:
@@ -475,19 +505,55 @@ async def bonus_offers(menu_id: str = "", store_id: str = "ica-maxi-1004097"):
             for o in meal.offer_matches:
                 used_ids.add(o.id)
 
-    # Return unused offers with decent discounts
-    bonus = []
+    # Categorize unused offers
+    categorized = {cat: [] for cat in BONUS_CATEGORIES}
+    uncategorized = []
+
     for o in offers:
         if o.id in used_ids:
             continue
         discount = 0
         if o.original_price and o.original_price > 0:
             discount = (1 - o.offer_price / o.original_price) * 100
-        if discount > 10 or o.quantity_deal:
-            bonus.append({**o.model_dump(), "discount": round(discount)})
+        if discount < 5 and not o.quantity_deal:
+            continue
 
-    bonus.sort(key=lambda x: -x.get("discount", 0))
-    return {"offers": bonus[:12]}
+        item = {**o.model_dump(), "discount": round(discount)}
+        name_lower = o.product_name.lower()
+        placed = False
+
+        for cat_key, cat_config in BONUS_CATEGORIES.items():
+            if any(kw in name_lower for kw in cat_config["keywords"]):
+                if len(categorized[cat_key]) < cat_config["max"]:
+                    categorized[cat_key].append(item)
+                    placed = True
+                    break
+
+        if not placed:
+            uncategorized.append(item)
+
+    # Sort each category by discount
+    for cat in categorized:
+        categorized[cat].sort(key=lambda x: -x.get("discount", 0))
+
+    # Build response — only include non-empty categories
+    groups = []
+    for cat_key, cat_config in BONUS_CATEGORIES.items():
+        if categorized[cat_key]:
+            groups.append({
+                "label": cat_config["label"],
+                "offers": categorized[cat_key],
+            })
+
+    # Add top uncategorized as "Övrigt" if there's room
+    if uncategorized:
+        uncategorized.sort(key=lambda x: -x.get("discount", 0))
+        groups.append({
+            "label": "Övrigt",
+            "offers": uncategorized[:3],
+        })
+
+    return {"groups": groups}
 
 
 @app.get("/api/stores")

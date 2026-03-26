@@ -95,17 +95,45 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
               {savings > 1 && <span className="text-xs font-medium" style={{ color: 'var(--green)' }}>−{Math.round(savings)} kr</span>}
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={(e) => { e.stopPropagation(); onSwap(day, '') }}
-                disabled={swapping === day}
+              <button onClick={(e) => { e.stopPropagation(); fetchAlternatives() }}
+                disabled={swapping === day || loadingAlts}
                 className="text-xs px-2.5 py-1 rounded-full border transition-colors hover:shadow-sm"
                 style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-                {swapping === day ? '...' : 'Byt'}
+                {loadingAlts ? '...' : 'Byt'}
               </button>
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {isExpanded ? '▲' : '▼'}
               </span>
             </div>
           </div>
+
+          {/* Quick swap alternatives — shown on collapsed card */}
+          {alternatives && alternatives.length > 0 && (
+            <div className="mt-3 pt-3 space-y-1.5 animate-expand" style={{ borderTop: '1px solid var(--border-light)' }}>
+              <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Byt till:</p>
+              {alternatives.slice(0, 3).map(alt => (
+                <button key={alt.recipe_id}
+                  onClick={(e) => { e.stopPropagation(); setAlternatives(null); onSwap(day, '', alt.recipe_id) }}
+                  disabled={swapping === day}
+                  className="w-full text-left p-2.5 rounded-lg border transition-all hover:shadow-sm text-sm flex items-center justify-between"
+                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }}>
+                  <div className="min-w-0">
+                    <span className="font-medium">{alt.title}</span>
+                    <div className="flex items-center gap-2 text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      {alt.rating && <span className="text-amber-400">★ {alt.rating}</span>}
+                      <span>{alt.cook_time_minutes} min</span>
+                      {alt.is_favorite && <span style={{ color: 'var(--accent)' }}>Favorit</span>}
+                    </div>
+                  </div>
+                  <span className="font-bold shrink-0 ml-2" style={{ color: 'var(--accent)' }}>{alt.price_per_portion} kr/p</span>
+                </button>
+              ))}
+              <button onClick={(e) => { e.stopPropagation(); setAlternatives(null) }}
+                className="w-full text-xs py-1" style={{ color: 'var(--text-muted)' }}>
+                Avbryt
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

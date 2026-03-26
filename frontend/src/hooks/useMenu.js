@@ -158,8 +158,8 @@ export function useMenu() {
       window.plausible?.('Menu Generated', { props: { meals: data.meals?.length, savings: Math.round(data.total_savings) } })
       // Fetch bonus offers (non-blocking)
       fetch(`/api/offers/bonus?menu_id=${data.id}&store_id=${preferences.store_id}`)
-        .then(r => r.ok ? r.json() : { offers: [] })
-        .then(d => setBonusOffers(d.offers || []))
+        .then(r => r.ok ? r.json() : { groups: [] })
+        .then(d => setBonusOffers(d.groups || []))
         .catch(() => {})
       setView('menu')
     } catch (e) {
