@@ -52,11 +52,21 @@ function StoreSelector({ preferences, update }) {
 
   const currentStore = stores?.[preferences.store_id]
   const currentName = currentStore?.city || 'Örebro Boglundsängen'
+  const currentType = currentStore?.type ? ({ maxi: 'Maxi', kvantum: 'Kvantum', supermarket: 'Supermarket', nara: 'Nära' }[currentStore.type] || '') : 'Maxi'
 
   const filtered = stores ? Object.entries(stores)
     .filter(([_, s]) => matchesSearch(s.city, search, s.address || ''))
-    .sort((a, b) => a[1].city.localeCompare(b[1].city, 'sv'))
+    .sort((a, b) => {
+      // Rank: maxi=1, kvantum=2, supermarket=3, nara=4
+      const ra = a[1].rank || 4
+      const rb = b[1].rank || 4
+      if (search && ra !== rb) return ra - rb // Maxi first when searching
+      return a[1].city.localeCompare(b[1].city, 'sv')
+    })
     : []
+
+  const TYPE_LABELS = { maxi: 'Maxi', kvantum: 'Kvantum', supermarket: 'Supermarket', nara: 'Nära' }
+  const TYPE_COLORS = { maxi: 'var(--accent)', kvantum: 'var(--green)', supermarket: 'var(--text-secondary)', nara: 'var(--text-muted)' }
 
   return (
     <div className="mb-6">
@@ -66,7 +76,7 @@ function StoreSelector({ preferences, update }) {
         <div>
           <span className="text-sm">
             <span style={{ color: 'var(--text-muted)' }}>Butik: </span>
-            <strong>ICA Maxi {currentName}</strong>
+            <strong>ICA {currentType} {currentName}</strong>
           </span>
           {currentStore?.address && (
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{currentStore.address}</p>
@@ -85,7 +95,7 @@ function StoreSelector({ preferences, update }) {
           <div className="max-h-64 overflow-y-auto">
             {!search && (
               <p className="px-4 py-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                96 butiker — sök t.ex. "Stockholm", "Göteborg" eller din stad
+                1100+ butiker — sök din stad
               </p>
             )}
             {filtered.slice(0, 30).map(([id, store]) => (
@@ -98,7 +108,14 @@ function StoreSelector({ preferences, update }) {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm" style={{ fontWeight: id === preferences.store_id ? 600 : 400 }}>{store.city}</span>
-                    {store.address && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{store.address}</p>}
+                    <div className="flex items-center gap-2">
+                      {store.type && (
+                        <span className="text-xs font-medium" style={{ color: TYPE_COLORS[store.type] || 'var(--text-muted)' }}>
+                          {TYPE_LABELS[store.type] || store.type}
+                        </span>
+                      )}
+                      {store.address && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{store.address}</span>}
+                    </div>
                   </div>
                   {id === preferences.store_id && <span style={{ color: 'var(--green)' }}>✓</span>}
                 </div>
