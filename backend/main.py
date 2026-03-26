@@ -461,21 +461,44 @@ async def swap_menu_recipe(req: SwapRequest):
 
 
 @app.get("/api/offers/top")
-async def top_offers(store_id: str = "ica-maxi-1004097", limit: int = 8):
-    """Return the best deals — highest discount percentage."""
+async def top_offers(store_id: str = "ica-maxi-1004097", limit: int = 12):
+    """Return all good deals — sorted by discount, then multi-buys."""
     raw_offers = await get_current_offers(store_id)
     offers = [_db_offer_to_model(o) for o in raw_offers]
 
-    # Score by discount percentage
     scored = []
     for o in offers:
-        if o.original_price and o.original_price > 0 and o.category in ("meat", "fish", "dairy", "produce"):
+        discount = 0
+        if o.original_price and o.original_price > 0:
             discount = (1 - o.offer_price / o.original_price) * 100
-            scored.append((o, discount))
+        # Include everything with a discount OR a multi-buy deal
+        if discount > 5 or o.quantity_deal:
+            scored.append((o, max(discount, 10 if o.quantity_deal else 0)))
 
     scored.sort(key=lambda x: -x[1])
-    top = [o.model_dump() for o, _ in scored[:limit]]
-    return {"offers": top, "count": len(top)}
+    top = [{**o.model_dump(), "discount": round(d)} for o, d in scored[:limit]]
+    return {"offers": top, "count": len(top), "total_available": len(offers)}
+
+
+@app.get("/api/offers/all")
+async def all_offers(store_id: str = "ica-maxi-1004097"):
+    """Return ALL current offers for a store — for browsing."""
+    raw_offers = await get_current_offers(store_id)
+    offers = []
+    for o in raw_offers:
+        offer = _db_offer_to_model(o)
+        discount = 0
+        if offer.original_price and offer.original_price > 0:
+            discount = round((1 - offer.offer_price / offer.original_price) * 100)
+        offers.append({**offer.model_dump(), "discount": discount})
+    # Group by category
+    grouped = {}
+    for o in sorted(offers, key=lambda x: -x.get("discount", 0)):
+        cat = o.get("category", "other")
+        if cat not in grouped:
+            grouped[cat] = []
+        grouped[cat].append(o)
+    return {"offers": offers, "grouped": grouped, "count": len(offers)}
 
 
 # --- Auth endpoints ---
