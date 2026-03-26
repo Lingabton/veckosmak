@@ -161,6 +161,58 @@ async def cron_scrape(key: str = ""):
     return {"status": "warning", "scraped": 0}
 
 
+# Background scraping state
+_scrape_all_status = {"running": False, "progress": 0, "total": 0, "scraped": 0, "failed": 0}
+
+
+@app.post("/api/cron/scrape-all")
+async def cron_scrape_all(key: str = "", batch_size: int = 20):
+    """Scrape ALL stores in background. Call from cron weekly."""
+    import asyncio
+    expected = settings.cron_secret
+    if expected and key != expected:
+        raise HTTPException(status_code=403, detail="Invalid key")
+
+    if _scrape_all_status["running"]:
+        return {"status": "already_running", **_scrape_all_status}
+
+    from backend.scrapers.store_registry import STORE_REGISTRY
+
+    async def scrape_background():
+        scraper = IcaMaxiScraper()
+        store_ids = list(STORE_REGISTRY.keys())
+        _scrape_all_status.update({"running": True, "progress": 0, "total": len(store_ids), "scraped": 0, "failed": 0})
+
+        for i in range(0, len(store_ids), batch_size):
+            batch = store_ids[i:i + batch_size]
+            for store_id in batch:
+                try:
+                    offers = await scraper.fetch_offers(store_id)
+                    if offers:
+                        await save_offers(offers)
+                        _scrape_all_status["scraped"] += len(offers)
+                except Exception as e:
+                    _scrape_all_status["failed"] += 1
+                    logger.debug(f"Scrape failed for {store_id}: {e}")
+                _scrape_all_status["progress"] += 1
+
+            # Be polite — pause between batches
+            await asyncio.sleep(2)
+            logger.info(f"Scrape-all progress: {_scrape_all_status['progress']}/{len(store_ids)}")
+
+        _scrape_all_status["running"] = False
+        logger.info(f"Scrape-all complete: {_scrape_all_status['scraped']} offers from {_scrape_all_status['progress']} stores")
+
+    asyncio.create_task(scrape_background())
+    return {"status": "started", "total_stores": len(STORE_REGISTRY)}
+
+
+@app.get("/api/cron/scrape-all/status")
+async def scrape_all_status():
+    """Check progress of scrape-all background job."""
+    return _scrape_all_status
+
+
 @app.get("/api/offers")
 async def list_offers(store_id: str = "ica-maxi-1004097", category: str | None = None):
     offers = await get_current_offers(store_id, category)
