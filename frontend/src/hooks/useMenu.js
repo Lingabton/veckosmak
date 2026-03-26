@@ -101,35 +101,31 @@ export function useMenu() {
     savePreferences(prefs)
   }, [])
 
-  // Fetch top offers — scrape first if none exist
+  // Ensure offers exist for the selected store, scraping if needed
+  const ensureOffers = useCallback(async (storeId) => {
+    try {
+      const resp = await fetch(`/api/offers?store_id=${storeId}`, { signal: AbortSignal.timeout(45000) })
+      const data = resp.ok ? await resp.json() : { count: 0 }
+      if (data.count === 0) {
+        // No offers — scrape this store
+        await fetch(`/api/offers/scrape?store_id=${storeId}`, { method: 'POST', signal: AbortSignal.timeout(30000) })
+      }
+    } catch {}
+  }, [])
+
+  // Fetch top offers
   const fetchTopOffers = useCallback(async () => {
     setLoadingOffers(true)
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 15000)
-
-      // Try to get offers
-      let resp = await fetch(`/api/offers/top?store_id=${preferences.store_id}&limit=10`, {
-        signal: controller.signal,
-      })
-      let data = resp.ok ? await resp.json() : { offers: [] }
-
-      // If no offers, trigger scrape for this store and retry
-      if (!data.offers?.length) {
-        try {
-          await fetch(`/api/offers/scrape?store_id=${preferences.store_id}`, { method: 'POST', signal: controller.signal })
-          resp = await fetch(`/api/offers/top?store_id=${preferences.store_id}&limit=10`, { signal: controller.signal })
-          data = resp.ok ? await resp.json() : { offers: [] }
-        } catch {}
-      }
-
-      clearTimeout(timeout)
+      await ensureOffers(preferences.store_id)
+      const resp = await fetch(`/api/offers/top?store_id=${preferences.store_id}&limit=10`, { signal: AbortSignal.timeout(10000) })
+      const data = resp.ok ? await resp.json() : { offers: [] }
       setTopOffers(data.offers || [])
     } catch {
       setTopOffers([])
     }
     setLoadingOffers(false)
-  }, [preferences.store_id])
+  }, [preferences.store_id, ensureOffers])
 
   // Go to offers selection step
   const goToOffers = useCallback(async () => {
@@ -142,6 +138,9 @@ export function useMenu() {
     setError(null)
     setExpandAll(false)
     try {
+      // Ensure offers exist for selected store
+      await ensureOffers(preferences.store_id)
+
       const resp = await fetch('/api/menu/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -167,7 +166,7 @@ export function useMenu() {
     } finally {
       setLoading(false)
     }
-  }, [preferences, setView])
+  }, [preferences, setView, ensureOffers])
 
   const swapRecipe = useCallback(async (day, reason = '', recipe_id = '') => {
     if (!menu) return
