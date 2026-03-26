@@ -90,6 +90,7 @@ export function useMenu() {
   const setView = useCallback((v) => {
     setViewState(v)
     setHashForView(v)
+    if (v === 'preferences') setError(null) // Clear errors when going back
   }, [])
 
   const setPreferences = useCallback((prefs) => {
@@ -97,24 +98,31 @@ export function useMenu() {
     savePreferences(prefs)
   }, [])
 
-  // Fetch top offers with timeout
+  // Fetch top offers — scrape first if none exist
   const fetchTopOffers = useCallback(async () => {
     setLoadingOffers(true)
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 8000)
-      const resp = await fetch(`/api/offers/top?store_id=${preferences.store_id}&limit=10`, {
+      const timeout = setTimeout(() => controller.abort(), 15000)
+
+      // Try to get offers
+      let resp = await fetch(`/api/offers/top?store_id=${preferences.store_id}&limit=10`, {
         signal: controller.signal,
       })
-      clearTimeout(timeout)
-      if (resp.ok) {
-        const data = await resp.json()
-        setTopOffers(data.offers || [])
-      } else {
-        setTopOffers([])
+      let data = resp.ok ? await resp.json() : { offers: [] }
+
+      // If no offers, trigger scrape for this store and retry
+      if (!data.offers?.length) {
+        try {
+          await fetch(`/api/offers/scrape?store_id=${preferences.store_id}`, { method: 'POST', signal: controller.signal })
+          resp = await fetch(`/api/offers/top?store_id=${preferences.store_id}&limit=10`, { signal: controller.signal })
+          data = resp.ok ? await resp.json() : { offers: [] }
+        } catch {}
       }
-    } catch (e) {
-      // Timeout or network error — proceed with empty offers
+
+      clearTimeout(timeout)
+      setTopOffers(data.offers || [])
+    } catch {
       setTopOffers([])
     }
     setLoadingOffers(false)
