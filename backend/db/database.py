@@ -70,7 +70,12 @@ async def _pg_get_pool():
     global _pg_pool
     if _pg_pool is None:
         import asyncpg
-        _pg_pool = await asyncpg.create_pool(get_settings().database_url, min_size=1, max_size=5)
+        # Clean connection string — remove unsupported params
+        dsn = get_settings().database_url
+        dsn = dsn.replace("&channel_binding=require", "").replace("?channel_binding=require", "?")
+        if dsn.endswith("?"):
+            dsn = dsn[:-1]
+        _pg_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, ssl="require")
     return _pg_pool
 
 
