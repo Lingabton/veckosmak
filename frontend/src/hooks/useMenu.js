@@ -68,6 +68,9 @@ export function useMenu() {
   const [loadingOffers, setLoadingOffers] = useState(false)
   const [swapping, setSwapping] = useState(null)
   const [error, setError] = useState(null)
+  // Clear stale errors on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setError(null) }, [])
   const [view, setViewState] = useState('preferences')
   const [copySuccess, setCopySuccess] = useState(false)
   const [expandAll, setExpandAll] = useState(false)

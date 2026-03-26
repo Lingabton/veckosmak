@@ -40,7 +40,7 @@ function App() {
       </header>
 
       <main className="max-w-2xl mx-auto px-5 py-8 flex-1 w-full">
-        {error && (
+        {error && view !== 'preferences' && (
           <div role="alert" className="border rounded-lg p-4 mb-5 text-sm animate-fade-in"
             style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#b91c1c' }}>
             <p>{error}</p>
