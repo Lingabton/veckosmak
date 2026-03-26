@@ -21,7 +21,7 @@ SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 # Detect database type from URL
 def _is_postgres():
-    return get_settings().database_url.startswith("postgresql")
+    return get_settings().database_url.startswith("postgresql") and not _force_sqlite
 
 
 # --- SQLite implementation ---
@@ -35,13 +35,18 @@ async def _sqlite_connect():
     return db
 
 
+_force_sqlite = False
+
 async def init_db():
-    if _is_postgres():
+    global _force_sqlite
+    if _is_postgres() and not _force_sqlite:
         try:
             await _pg_init()
+            logger.info("PostgreSQL connected successfully")
         except Exception as e:
-            # PG connection may fail during Docker build — retry on first request
-            logger.warning(f"PostgreSQL init failed (will retry on first request): {e}")
+            logger.error(f"PostgreSQL failed — falling back to SQLite: {e}")
+            _force_sqlite = True
+            await _sqlite_init()
     else:
         await _sqlite_init()
 
