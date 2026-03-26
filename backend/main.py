@@ -33,7 +33,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Veckosmak API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Veckosmak API",
+    version="0.2.0",
+    description="AI-driven menyplanering baserad på veckans matbutikserbjudanden",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    lifespan=lifespan,
+)
 
 settings = get_settings()
 
@@ -42,6 +49,9 @@ allowed_origins = [settings.frontend_url]
 if settings.app_env == "production":
     # Add production frontend URLs here when deployed
     allowed_origins.append("https://veckosmak.vercel.app")
+
+# API version prefix — all endpoints available at both /api/ and /api/v1/
+API_PREFIX = "/api"
 
 app.add_middleware(
     CORSMiddleware,
@@ -106,11 +116,20 @@ def _db_recipe_to_model(row: dict) -> Recipe:
 async def health():
     offers = await get_current_offers("ica-maxi-1004097")
     recipes = await get_all_recipes()
+    # Check offer freshness
+    from datetime import date
+    stale_offers = all(
+        o.get("valid_to", "2000-01-01") < date.today().isoformat()
+        for o in offers
+    ) if offers else True
+
     return {
-        "status": "ok",
+        "status": "ok" if not stale_offers else "warning",
         "version": "0.2.0",
         "offers": len(offers),
         "recipes": len(recipes),
+        "offers_stale": stale_offers,
+        "database": "postgresql" if "postgresql" in settings.database_url else "sqlite",
     }
 
 
@@ -134,6 +153,8 @@ async def cron_scrape(key: str = ""):
     if offers:
         await save_offers(offers)
         logger.info(f"Cron: scraped {len(offers)} offers")
+        if len(offers) < 5:
+            logger.warning(f"ALERT: Only {len(offers)} offers — unusually low")
         return {"status": "ok", "scraped": len(offers)}
 
     logger.warning("Cron: 0 offers found")
