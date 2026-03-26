@@ -7,23 +7,31 @@ import LoadingSkeleton from './components/LoadingSkeleton'
 import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
-  const s = useMenu()
+  const {
+    preferences, setPreferences,
+    menu, topOffers, loading, loadingOffers, swapping, error,
+    view, setView,
+    generateMenu, goToOffers, swapRecipe, sendFeedback,
+    copySuccess, copyToClipboard,
+    expandAll, setExpandAll,
+    isReturning, bonusOffers,
+  } = useMenu()
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
       <header className="no-print" style={{ background: 'var(--color-brand-dark)' }}>
         <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between">
-          <a href="/" onClick={(e) => { e.preventDefault(); s.setView(s.menu ? 'menu' : 'preferences') }}
+          <a href="/" onClick={(e) => { e.preventDefault(); setView(menu ? 'menu' : 'preferences') }}
             className="flex items-baseline gap-2 text-white hover:opacity-90 transition-opacity">
             <span className="text-xl font-bold tracking-tight">veckosmak</span>
             <span className="text-sm text-green-300 hidden sm:inline">smartare middagar</span>
           </a>
-          {s.menu && (
+          {menu && (
             <nav className="flex gap-1">
               {[['menu', 'Meny'], ['shopping', 'Inköpslista']].map(([v, label]) => (
-                <button key={v} onClick={() => s.setView(v)}
+                <button key={v} onClick={() => setView(v)}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                    s.view === v ? 'bg-white/20 text-white' : 'text-green-200 hover:text-white'
+                    view === v ? 'bg-white/20 text-white' : 'text-green-200 hover:text-white'
                   }`}>{label}</button>
               ))}
             </nav>
@@ -32,25 +40,46 @@ function App() {
       </header>
 
       <main className="max-w-2xl mx-auto px-5 py-8 flex-1 w-full">
-        {s.error && s.view !== 'preferences' && (
+        {error && view !== 'preferences' && (
           <div className="card p-4 mb-6 fade-in" style={{ background: '#fff5f5', borderColor: '#ffc9c9' }}>
-            <p className="text-sm" style={{ color: '#c92a2a' }}>{s.error}</p>
-            <button onClick={s.generateMenu} className="text-sm font-medium mt-2 underline" style={{ color: '#c92a2a' }}>Försök igen</button>
+            <p className="text-sm" style={{ color: '#c92a2a' }}>{error}</p>
+            <button onClick={generateMenu} className="text-sm font-medium mt-2 underline" style={{ color: '#c92a2a' }}>Försök igen</button>
           </div>
         )}
 
         <ErrorBoundary>
-          {s.loading ? <LoadingSkeleton />
-           : s.view === 'preferences' ? <PreferencesForm {...s} />
-           : s.view === 'offers' ? <TopOffers {...s} />
-           : s.view === 'menu' && s.menu ? <WeeklyMenu {...s} />
-           : s.view === 'shopping' && s.menu ? <ShoppingList {...s} />
-           : (
+          {loading ? <LoadingSkeleton />
+           : view === 'preferences' ? (
+            <PreferencesForm
+              preferences={preferences} setPreferences={setPreferences}
+              goToOffers={goToOffers} generateMenu={generateMenu}
+              loading={loading} isReturning={isReturning}
+            />
+          ) : view === 'offers' ? (
+            <TopOffers
+              offers={topOffers} preferences={preferences} setPreferences={setPreferences}
+              onGenerate={generateMenu} onBack={() => setView('preferences')}
+              loading={loading} loadingOffers={loadingOffers}
+            />
+          ) : view === 'menu' && menu ? (
+            <WeeklyMenu
+              menu={menu} onSwap={swapRecipe} swapping={swapping}
+              onShowShopping={() => setView('shopping')} onBack={() => setView('preferences')}
+              onRegenerate={generateMenu} onFeedback={sendFeedback}
+              expandAll={expandAll} setExpandAll={setExpandAll}
+              bonusOffers={bonusOffers}
+            />
+          ) : view === 'shopping' && menu ? (
+            <ShoppingList
+              menu={menu} onBack={() => setView('menu')}
+              copySuccess={copySuccess} onCopy={copyToClipboard}
+            />
+          ) : (
             <div className="text-center py-20 fade-in">
               <p className="text-5xl mb-4">🍽</p>
               <h2 className="text-xl font-bold mb-2">Ingen meny skapad</h2>
               <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>Skapa en veckomeny för att komma igång.</p>
-              <button onClick={() => s.setView('preferences')} className="btn btn-primary">Skapa veckomeny</button>
+              <button onClick={() => setView('preferences')} className="btn btn-primary">Skapa veckomeny</button>
             </div>
           )}
         </ErrorBoundary>
