@@ -16,7 +16,8 @@ class PlannedMeal(BaseModel):
     reasoning: str = ""
     popularity_score: float = 0.0   # 0-5 estimated popularity
     is_fallback: bool = False       # True if generated without AI
-    mealprep_tip: str = ""          # Optional mealprep suggestion
+    mealprep_tip: str = ""
+    side_suggestion: str = ""       # "Servera med kokt potatis och lingon"
 
 
 class WeeklyMenu(BaseModel):

@@ -54,17 +54,22 @@ MENU_SYSTEM_PROMPT = """Du är en svensk menyplanerare. Din uppgift är att skap
 som maximerar användningen av butikens veckoerrbjudanden.
 
 REGLER:
-1. Prioritera recept som har högt crowd-betyg OCH matchar erbjudanden
-2. Om användaren har valt "bästa köp" att utgå från, MÅSTE minst hälften av recepten använda dessa ingredienser
-3. Variera proteinkällor över veckan (inte kyckling varje dag)
-4. Respektera tidsmixen om angiven (t.ex. 2 snabba + 3 längre)
-5. Respektera alltid användarens kostval och livsstilspreferenser
+1. Prioritera recept med högt crowd-betyg OCH erbjudande-matchningar
+2. Om användaren valt "bästa köp", MÅSTE minst hälften av recepten använda dessa ingredienser
+3. Variera proteinkällor (inte kyckling varje dag)
+4. Respektera tidsmixen (t.ex. 2 snabba + 3 längre)
+5. Respektera kostval och livsstilspreferenser
 6. Om hushållet har barn, prioritera barnvänliga rätter
 7. Håll dig inom budget om angiven
-8. Om "minska matsvinn" önskas: välj recept som delar ingredienser (t.ex. kyckling mån + kycklingwok ons)
-9. Returnera ALLTID giltig JSON enligt schemat nedan
+8. Om "minska matsvinn" önskas: välj recept som delar ingredienser
+9. Om receptet saknar tydliga tillbehör (bara kött/fisk utan potatis/ris/pasta), föreslå tillbehör i "side_suggestion"
 
-Du MÅSTE välja recept-ID:n från listan av tillgängliga recept. Hitta INTE på egna.
+DAGKONTEXT (anpassa rätter till vardagar vs helg):
+- Måndag-torsdag: Vardagsrätter, snabbare, enklare
+- Fredag: Fredagsmys — tacos, pizza, hamburgare, fish & chips
+- Lördag-söndag: Helgmiddagar — längre tillagning, festligare
+
+Du MÅSTE välja recept-ID:n från listan. Hitta INTE på egna.
 
 SVARSFORMAT (strikt JSON, ingen annan text):
 {
@@ -73,7 +78,8 @@ SVARSFORMAT (strikt JSON, ingen annan text):
       "day": "monday",
       "recipe_id": "ica-123456",
       "reasoning": "Kort motivering",
-      "mealprep_tip": "Valfritt tips om mealprep, t.ex. 'Gör dubbelsats och frys in halva'"
+      "mealprep_tip": "Valfritt tips, t.ex. 'Gör dubbelsats och frys in halva'",
+      "side_suggestion": "Valfritt tillbehörsförslag, t.ex. 'Servera med kokt potatis och lingon'"
     }
   ]
 }"""
@@ -218,16 +224,22 @@ def format_offers_for_prompt(offers: list[Offer], pinned_ids: list[str] = None) 
     return "\n".join(lines)
 
 
-def _score_recipe(recipe: Recipe, offer_matches: int) -> float:
-    """Combined score: offer matches + crowd rating weighted by review count."""
+def _score_recipe(recipe: Recipe, offer_matches: int, lifestyle: list[str] = None) -> float:
+    """Combined score: offer matches + crowd rating + nutrition bonus."""
     score = offer_matches * 2.0
     if recipe.rating and recipe.rating_count:
-        # Popular recipes with many reviews get big bonus
-        # 4.5★ with 500 reviews >> 4.5★ with 5 reviews
-        confidence = min(1.0, recipe.rating_count / 100)  # Caps at 100 reviews
-        score += recipe.rating * confidence  # Up to 5.0 bonus
+        confidence = min(1.0, recipe.rating_count / 100)
+        score += recipe.rating * confidence
         if recipe.rating >= 4.0 and recipe.rating_count >= 50:
             score += 2.0  # "Familjefavorit" bonus
+    # Nutrition bonus for lifestyle preferences
+    if lifestyle and recipe.nutrition:
+        if 'prefer_highprotein' in lifestyle and recipe.nutrition.protein and recipe.nutrition.protein > 30:
+            score += 1.5
+        if 'prefer_lowcarb' in lifestyle and recipe.nutrition.carbohydrates and recipe.nutrition.carbohydrates < 20:
+            score += 1.5
+        if 'prefer_healthy' in lifestyle and recipe.nutrition.calories and recipe.nutrition.calories < 500:
+            score += 1.0
     return score
 
 
@@ -479,6 +491,7 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
         day = meal_choice.get("day", days[i] if i < len(days) else f"day-{i}")
         reasoning = meal_choice.get("reasoning", "")
         mealprep_tip = meal_choice.get("mealprep_tip", "")
+        side_suggestion = meal_choice.get("side_suggestion", "")
         cost_with, cost_without, matches = calculate_meal_cost(
             recipe.ingredients, offers, servings_scale
         )
@@ -502,6 +515,7 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
                 popularity_score=_get_crowd_rating(recipe),
                 is_fallback=is_fallback,
                 mealprep_tip=mealprep_tip,
+                side_suggestion=side_suggestion,
             )
         )
 

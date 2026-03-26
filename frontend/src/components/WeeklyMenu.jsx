@@ -62,31 +62,42 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
       {bonusOffers && bonusOffers.length > 0 && (
         <div className="mt-10">
           <h2 className="text-lg font-bold tracking-tight mb-1">Passa på</h2>
-          <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
-            Bra priser utanför din meny denna vecka
+          <p className="text-sm mb-5" style={{ color: 'var(--color-text-muted)' }}>
+            Bra priser — tryck + för att lägga till på inköpslistan
           </p>
           <div className="space-y-5">
             {bonusOffers.map((group, gi) => (
               <div key={gi}>
-                <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>
                   {group.label}
                 </h3>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {group.offers.map((offer, i) => (
-                    <div key={offer.id || i} className="flex items-center justify-between p-3 rounded-xl border"
-                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+                    <div key={offer.id || i} className="card flex items-center justify-between p-3">
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{offer.product_name}</p>
-                        {offer.brand && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{offer.brand}</p>}
-                        {offer.quantity_deal && <p className="text-xs font-medium" style={{ color: 'var(--green)' }}>{offer.quantity_deal}</p>}
+                        {offer.brand && <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{offer.brand}</p>}
+                        {offer.quantity_deal && <p className="text-xs font-medium" style={{ color: 'var(--color-brand)' }}>{offer.quantity_deal}</p>}
                       </div>
-                      <div className="text-right shrink-0 ml-3">
-                        <span className="font-bold" style={{ color: 'var(--accent)' }}>
-                          {Math.round(offer.offer_price)} {offer.unit}
-                        </span>
-                        {offer.discount > 0 && (
-                          <span className="block text-xs font-medium" style={{ color: 'var(--green)' }}>−{offer.discount}%</span>
-                        )}
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
+                        <div className="text-right">
+                          <span className="font-bold" style={{ color: 'var(--color-accent)' }}>
+                            {Math.round(offer.offer_price)} {offer.unit}
+                          </span>
+                          {offer.discount > 0 && (
+                            <span className="block text-xs font-medium" style={{ color: 'var(--color-brand)' }}>−{offer.discount}%</span>
+                          )}
+                        </div>
+                        <button onClick={() => {
+                          const custom = JSON.parse(localStorage.getItem('veckosmak_custom_items') || '[]')
+                          const name = `${offer.product_name}${offer.brand ? ' ('+offer.brand+')' : ''}`
+                          if (!custom.includes(name)) {
+                            custom.push(name)
+                            localStorage.setItem('veckosmak_custom_items', JSON.stringify(custom))
+                          }
+                        }}
+                          className="stepper-btn text-sm" style={{width:32,height:32,fontSize:16}}
+                          title="Lägg till på inköpslistan">+</button>
                       </div>
                     </div>
                   ))}

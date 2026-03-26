@@ -15,7 +15,7 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
   const [alts, setAlts] = useState(null)
   const [loadingAlts, setLoadingAlts] = useState(false)
 
-  const { day, recipe, estimated_cost, estimated_cost_without_offers, offer_matches, scaled_servings, reasoning, popularity_score, mealprep_tip } = meal
+  const { day, recipe, estimated_cost, estimated_cost_without_offers, offer_matches, scaled_servings, reasoning, popularity_score, mealprep_tip, side_suggestion } = meal
   const savings = estimated_cost_without_offers - estimated_cost
   const pp = scaled_servings > 0 ? Math.round(estimated_cost / scaled_servings) : 0
   const scale = scaled_servings / (recipe.servings || 4)
@@ -55,7 +55,8 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
 
           <div className="flex items-center gap-2 mt-1.5 text-xs flex-wrap" style={{color:'var(--color-text-muted)'}}>
             {popularity_score > 0 && <span className="text-amber-400">{'★'.repeat(Math.round(popularity_score))} <span className="text-gray-400">{popularity_score.toFixed(1)}</span></span>}
-            <span>{recipe.cook_time_minutes} min</span>
+            {recipe.cook_time_minutes <= 20 && <span className="font-semibold" style={{color:'var(--color-brand)'}}>⚡ {recipe.cook_time_minutes} min</span>}
+            {recipe.cook_time_minutes > 20 && <span>{recipe.cook_time_minutes} min</span>}
             {offer_matches?.length > 0 && <span style={{color:'var(--color-brand)'}}>{offer_matches.length} erbjudanden</span>}
             {recipe.tags?.includes('barnvänlig') && <span style={{background:'#fef3c7',color:'#92400e',padding:'1px 6px',borderRadius:'4px'}}>Barnvänlig</span>}
           </div>
@@ -112,6 +113,7 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
               </div>
             )}
 
+            {side_suggestion && <p className="text-xs p-3 rounded-xl mb-2" style={{background:'#fefce8',color:'#854d0e'}}><b>Servera med:</b> {side_suggestion}</p>}
             {mealprep_tip && <p className="text-xs p-3 rounded-xl mb-3" style={{background:'#f0f9ff',color:'#0369a1'}}><b>Tips:</b> {mealprep_tip}</p>}
 
             {offer_matches?.length > 0 && (
@@ -140,7 +142,10 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
               {recipe.instructions.map((step,i) => (
                 <li key={i} className="flex gap-2">
                   <span className="font-bold shrink-0" style={{color:'var(--color-brand)'}}>{i+1}.</span>
-                  <span>{step}</span>
+                  <span dangerouslySetInnerHTML={{__html: step
+                    .replace(/(\d+\s*(?:min|minuter|sekunder|timmar?))/gi, '<b>$1</b>')
+                    .replace(/(Stek|Koka|Vispa|Hacka|Skala|Skär|Blanda|Rör|Tillsätt|Häll|Stek|Grilla|Ugn|Sjud|Smält)/g, '<b>$1</b>')
+                  }} />
                 </li>
               ))}
             </ol>

@@ -95,9 +95,13 @@ body {
 }
 .stepper-btn:hover { border-color: var(--color-brand); color: var(--color-brand); }
 
-/* Print */
+/* Print — clean black & white */
 @media print {
   .no-print { display: none !important; }
-  body { background: white !important; }
-  .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+  body { background: white !important; font-size: 12pt; }
+  .card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
+  h1 { font-size: 18pt; }
+  h2 { font-size: 14pt; }
+  .btn, .btn-primary, .btn-secondary, .btn-pill, .stepper-btn { display: none !important; }
+  img { max-height: 100px; }
 }

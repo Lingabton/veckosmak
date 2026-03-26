@@ -107,9 +107,11 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
           <div className="h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: 'var(--color-brand)' }} />
         </div>
         {checkedCount === totalCount && totalCount > 0 && (
-          <p className="text-sm font-medium mt-2 text-center" style={{ color: 'var(--color-brand)' }}>
-            Klart! Allt avbockat.
-          </p>
+          <div className="text-center mt-3 p-4 rounded-xl fade-in" style={{background:'var(--color-brand-light)'}}>
+            <p className="text-2xl mb-1">🎉</p>
+            <p className="font-bold" style={{color:'var(--color-brand-dark)'}}>Klart! Allt avbockat.</p>
+            <p className="text-xs mt-1" style={{color:'var(--color-brand)'}}>Bra handlat!</p>
+          </div>
         )}
       </div>
 

@@ -181,6 +181,7 @@ export function useMenu() {
       const data = await resp.json()
       setMenu(data)
       saveChecked({})
+      localStorage.removeItem('veckosmak_custom_items')
       // Track menu generation
       window.plausible?.('Menu Generated', { props: { meals: data.meals?.length, savings: Math.round(data.total_savings) } })
       // Fetch bonus offers (non-blocking)
