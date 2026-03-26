@@ -2,10 +2,18 @@ import { useState, useEffect } from 'react'
 
 // Map regions/cities so "Stockholm" finds Nacka, Solna, Arninge etc.
 const REGION_ALIASES = {
-  'stockholm': ['arninge','barkarbystaden','haninge','nacka','solna','kungens kurva','taby'],
-  'göteborg': ['angered','backaplan','goteborg','hoganas'],
-  'malmö': ['malmo','burlöv','burlov'],
-  'örebro': ['orebro','boglundsangen'],
+  'stockholm': ['arninge','barkarbystaden','haninge','nacka','solna','lindhagen','bromma','flemingsberg','botkyrka','haggvik','osteraker','varmd','nynashamn','tumba'],
+  'göteborg': ['angered','backaplan','goteborg','hogsbo','torslanda','partille','kungalv'],
+  'malmö': ['malmo','burlov','toftanas','vastra hamnen','loddekopin'],
+  'örebro': ['orebro','boglundsangen','universitetet'],
+  'uppsala': ['stenhagen','gnista'],
+  'västerås': ['erikslund','halla','vasteras'],
+  'halmstad': ['hogskolan','flygstaden'],
+  'helsingborg': ['raa','hyllinge'],
+  'södertälje': ['vasa handelsplats','moraberg','sodertalje'],
+  'gävle': ['gavle','brynas'],
+  'karlstad': ['valsviken'],
+  'lund': ['gunnesbo'],
 }
 
 function normalize(s) {
