@@ -1,5 +1,34 @@
 import { useState, useEffect } from 'react'
 
+// Map regions/cities so "Stockholm" finds Nacka, Solna, Arninge etc.
+const REGION_ALIASES = {
+  'stockholm': ['arninge','barkarbystaden','haninge','nacka','solna','kungens kurva','taby'],
+  'göteborg': ['angered','backaplan','goteborg','hoganas'],
+  'malmö': ['malmo','burlöv','burlov'],
+  'örebro': ['orebro','boglundsangen'],
+}
+
+function normalize(s) {
+  return s.toLowerCase()
+    .replace(/å/g,'a').replace(/ä/g,'a').replace(/ö/g,'o')
+    .replace(/é/g,'e').replace(/ü/g,'u')
+}
+
+function matchesSearch(city, query) {
+  if (!query) return true
+  const q = normalize(query)
+  const c = normalize(city)
+  // Direct match
+  if (c.includes(q)) return true
+  // Region alias match
+  for (const [region, aliases] of Object.entries(REGION_ALIASES)) {
+    if (region.includes(q) || normalize(region).includes(q)) {
+      if (aliases.some(a => c.includes(a))) return true
+    }
+  }
+  return false
+}
+
 function StoreSelector({ preferences, update }) {
   const [stores, setStores] = useState(null)
   const [search, setSearch] = useState('')
@@ -16,8 +45,8 @@ function StoreSelector({ preferences, update }) {
   const currentName = currentStore?.city || 'Örebro Boglundsängen'
 
   const filtered = stores ? Object.entries(stores)
-    .filter(([_, s]) => s.city.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => a[1].city.localeCompare(b[1].city))
+    .filter(([_, s]) => matchesSearch(s.city, search))
+    .sort((a, b) => a[1].city.localeCompare(b[1].city, 'sv'))
     : []
 
   return (
@@ -35,26 +64,32 @@ function StoreSelector({ preferences, update }) {
       {open && (
         <div className="mt-2 rounded-xl border overflow-hidden animate-expand"
           style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
-          <input type="text" placeholder="Sök stad..." value={search}
+          <input type="text" placeholder="Sök stad eller område..." value={search}
             onChange={e => setSearch(e.target.value)} autoFocus
             className="w-full px-4 py-2.5 text-sm border-b focus:outline-none"
             style={{ borderColor: 'var(--border-light)', backgroundColor: 'var(--bg)' }} />
-          <div className="max-h-48 overflow-y-auto">
-            {filtered.slice(0, 20).map(([id, store]) => (
+          <div className="max-h-64 overflow-y-auto">
+            {!search && (
+              <p className="px-4 py-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                96 butiker — sök t.ex. "Stockholm", "Göteborg" eller din stad
+              </p>
+            )}
+            {filtered.slice(0, 30).map(([id, store]) => (
               <button key={id} onClick={() => { update('store_id', id); setOpen(false); setSearch('') }}
-                className={`w-full text-left px-4 py-2 text-sm border-b transition-colors ${
-                  id === preferences.store_id ? 'font-medium' : ''
-                }`}
+                className="w-full text-left px-4 py-2.5 text-sm border-b transition-colors hover:bg-gray-50"
                 style={{
                   borderColor: 'var(--border-light)',
-                  backgroundColor: id === preferences.store_id ? 'var(--brand-light, var(--green-soft))' : 'transparent',
-                  color: id === preferences.store_id ? 'var(--green-deep, var(--green))' : 'var(--text)',
+                  backgroundColor: id === preferences.store_id ? 'var(--green-soft)' : 'transparent',
+                  fontWeight: id === preferences.store_id ? 600 : 400,
                 }}>
                 {store.city}
+                {id === preferences.store_id && <span className="ml-2" style={{ color: 'var(--green)' }}>✓</span>}
               </button>
             ))}
-            {filtered.length === 0 && (
-              <p className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>Ingen butik hittades</p>
+            {search && filtered.length === 0 && (
+              <p className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+                Ingen ICA Maxi hittades för "{search}"
+              </p>
             )}
           </div>
         </div>
