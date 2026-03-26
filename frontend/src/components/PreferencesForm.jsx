@@ -1,4 +1,67 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+function StoreSelector({ preferences, update }) {
+  const [stores, setStores] = useState(null)
+  const [search, setSearch] = useState('')
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/stores')
+      .then(r => r.ok ? r.json() : { stores: {} })
+      .then(d => setStores(d.stores || {}))
+      .catch(() => {})
+  }, [])
+
+  const currentStore = stores?.[preferences.store_id]
+  const currentName = currentStore?.city || 'Örebro Boglundsängen'
+
+  const filtered = stores ? Object.entries(stores)
+    .filter(([_, s]) => s.city.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a[1].city.localeCompare(b[1].city))
+    : []
+
+  return (
+    <div className="mb-6">
+      <button onClick={() => setOpen(!open)}
+        className="w-full text-left px-4 py-2.5 rounded-xl border text-sm flex items-center justify-between"
+        style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
+        <span>
+          <span style={{ color: 'var(--text-muted)' }}>Butik: </span>
+          <strong>ICA Maxi {currentName}</strong>
+        </span>
+        <span style={{ color: 'var(--text-muted)' }}>{open ? '▲' : 'Byt ▼'}</span>
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-xl border overflow-hidden animate-expand"
+          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
+          <input type="text" placeholder="Sök stad..." value={search}
+            onChange={e => setSearch(e.target.value)} autoFocus
+            className="w-full px-4 py-2.5 text-sm border-b focus:outline-none"
+            style={{ borderColor: 'var(--border-light)', backgroundColor: 'var(--bg)' }} />
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.slice(0, 20).map(([id, store]) => (
+              <button key={id} onClick={() => { update('store_id', id); setOpen(false); setSearch('') }}
+                className={`w-full text-left px-4 py-2 text-sm border-b transition-colors ${
+                  id === preferences.store_id ? 'font-medium' : ''
+                }`}
+                style={{
+                  borderColor: 'var(--border-light)',
+                  backgroundColor: id === preferences.store_id ? 'var(--brand-light, var(--green-soft))' : 'transparent',
+                  color: id === preferences.store_id ? 'var(--green-deep, var(--green))' : 'var(--text)',
+                }}>
+                {store.city}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>Ingen butik hittades</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const DIET_OPTIONS = [
   { value: 'vegetarian', label: 'Vegetarisk' },
@@ -148,10 +211,8 @@ export default function PreferencesForm({ preferences, setPreferences, onGenerat
         </div>
       )}
 
-      {/* Store */}
-      <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-        Erbjudanden från ICA Maxi Boglundsängen, Örebro
-      </p>
+      {/* Store picker */}
+      <StoreSelector preferences={preferences} update={update} />
 
       {/* Form — hidden for returning users unless they click "Ändra" */}
       {(!isReturning || showMore) && (
