@@ -3,10 +3,16 @@ import { loadChecked, saveChecked } from '../hooks/useMenu'
 
 const CATEGORIES = {
   produce: 'Frukt & grönt', meat: 'Kött & chark', fish: 'Fisk & skaldjur',
-  dairy: 'Mejeri & ägg', pantry: 'Skafferi', bakery: 'Bröd', frozen: 'Fryst', other: 'Övrigt',
+  dairy: 'Mejeri & ägg', pantry: 'Skafferi', bakery: 'Bröd', frozen: 'Fryst',
+  other: 'Övrigt', custom: 'Mina tillägg',
 }
-// ICA Maxi Boglundsängen layout
-const CATEGORY_ORDER = ['bakery', 'meat', 'fish', 'produce', 'dairy', 'pantry', 'frozen', 'other']
+const CATEGORY_ORDER = ['bakery', 'meat', 'fish', 'produce', 'dairy', 'pantry', 'frozen', 'other', 'custom']
+
+const CUSTOM_KEY = 'veckosmak_custom_items'
+function loadCustom() { try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]') } catch { return [] } }
+function saveCustom(items) { localStorage.setItem(CUSTOM_KEY, JSON.stringify(items)) }
+
+const QUICK_ADD = ['Mjölk', 'Bröd', 'Ägg', 'Bananer', 'Kaffe', 'Smör', 'Juice', 'Yoghurt', 'Ost', 'Toapapper']
 const CAT_COLORS = {
   bakery: '#92400e', meat: '#991b1b', fish: '#1e40af', produce: '#166534',
   dairy: '#4338ca', pantry: '#78350f', frozen: '#0e7490', other: '#6b7280',
@@ -14,17 +20,35 @@ const CAT_COLORS = {
 
 export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
   const [checked, setChecked] = useState(loadChecked)
+  const [customItems, setCustomItems] = useState(loadCustom)
+  const [newItem, setNewItem] = useState('')
   useEffect(() => { saveChecked(checked) }, [checked])
+  useEffect(() => { saveCustom(customItems) }, [customItems])
   if (!menu?.shopping_list) return null
 
+  const addCustom = (name) => {
+    if (!name.trim() || customItems.includes(name.trim())) return
+    setCustomItems([...customItems, name.trim()])
+    setNewItem('')
+  }
+  const removeCustom = (name) => {
+    setCustomItems(customItems.filter(i => i !== name))
+    setChecked(prev => { const n = {...prev}; delete n[`custom:${name}`]; return n })
+  }
+
   const { items, total_estimated_cost, items_on_offer } = menu.shopping_list
+  const allItems = [...items, ...customItems.map(name => ({
+    ingredient_name: name, total_amount: 0, unit: '', category: 'custom',
+    estimated_price: 0, is_on_offer: false, matched_offer: null, used_in: [],
+  }))]
   const checkedCount = Object.values(checked).filter(Boolean).length
-  const progress = items.length > 0 ? (checkedCount / items.length) * 100 : 0
+  const totalCount = allItems.length
+  const progress = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0
   const remainingCost = items.reduce((sum, i) => checked[i.ingredient_name] ? sum : sum + i.estimated_price, 0)
   const toggle = (name) => setChecked(prev => ({ ...prev, [name]: !prev[name] }))
 
   const grouped = {}
-  for (const item of items) {
+  for (const item of allItems) {
     const cat = item.category || 'other'
     if (!grouped[cat]) grouped[cat] = []
     grouped[cat].push(item)
@@ -79,11 +103,11 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
             }
           </span>
         </div>
-        <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--border)' }}>
-          <div className="h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: 'var(--green)' }} />
+        <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--color-border)' }}>
+          <div className="h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: 'var(--color-brand)' }} />
         </div>
-        {checkedCount === items.length && items.length > 0 && (
-          <p className="text-sm font-medium mt-2 text-center" style={{ color: 'var(--green)' }}>
+        {checkedCount === totalCount && totalCount > 0 && (
+          <p className="text-sm font-medium mt-2 text-center" style={{ color: 'var(--color-brand)' }}>
             Klart! Allt avbockat.
           </p>
         )}
@@ -146,7 +170,11 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
                             {item.matched_offer ? `${Math.round(item.matched_offer.offer_price)} ${item.matched_offer.unit}` : 'Erbjudande'}
                           </span>
                         )}
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>~{Math.round(item.estimated_price)} kr</span>
+                        {item.estimated_price > 0 && <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>~{Math.round(item.estimated_price)} kr</span>}
+                        {item.category === 'custom' && (
+                          <button onClick={e => { e.stopPropagation(); removeCustom(item.ingredient_name) }}
+                            className="text-xs px-1.5" style={{ color: 'var(--color-text-muted)' }}>✕</button>
+                        )}
                       </div>
                     </div>
                   )
@@ -155,6 +183,27 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
             </div>
           )
         })}
+      </div>
+
+      {/* Add custom items */}
+      <div className="mt-8 card p-4">
+        <p className="font-bold text-sm mb-3">Lägg till egna varor</p>
+        <div className="flex gap-1.5 flex-wrap mb-3">
+          {QUICK_ADD.filter(q => !customItems.includes(q)).slice(0, 6).map(q => (
+            <button key={q} onClick={() => addCustom(q)}
+              className="btn-pill text-xs">{q}</button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input type="text" value={newItem} onChange={e => setNewItem(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addCustom(newItem)}
+            placeholder="Skriv vara..."
+            className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-green-700"
+            style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }} />
+          <button onClick={() => addCustom(newItem)} className="btn btn-primary text-sm px-4 py-2">
+            Lägg till
+          </button>
+        </div>
       </div>
     </section>
   )
