@@ -710,13 +710,45 @@ def _build_shopping_list(
                     "used_in": [meal.recipe.title],
                 }
 
+    # Convert to shopping-friendly units
+    def _shopping_amount(amount: float, unit: str, name: str) -> tuple[float, str]:
+        """Convert recipe units to shopping-friendly units."""
+        # Convert msk/tsk to grams (nobody buys "3 msk smör")
+        if unit == 'msk':
+            grams = amount * 15
+            if grams >= 50:
+                return round(grams / 25) * 25, 'g'  # Round to 25g
+            return round(grams / 10) * 10, 'g'
+        if unit == 'tsk':
+            grams = amount * 5
+            if grams >= 20:
+                return round(grams / 10) * 10, 'g'
+            return 0, ''  # Too small to list
+        if unit == 'krm' or unit == 'nypa':
+            return 0, ''  # Don't list
+        # Round grams to kitchen-friendly
+        if unit == 'g':
+            if amount < 50:
+                return round(amount / 10) * 10, 'g'
+            if amount < 500:
+                return round(amount / 25) * 25, 'g'
+            return round(amount / 50) * 50, 'g'
+        if unit == 'dl':
+            return round(amount * 2) / 2, 'dl'  # Round to 0.5 dl
+        if unit == 'st':
+            return max(1, round(amount)), 'st'
+        return round(amount, 1), unit
+
     items = []
     for data in aggregated.values():
+        amount, unit = _shopping_amount(data["amount"], data["unit"], data["name"])
+        if amount <= 0 and data["unit"] in ('krm', 'nypa', 'tsk', 'msk'):
+            continue  # Skip tiny amounts
         items.append(
             ShoppingItem(
                 ingredient_name=data["name"],
-                total_amount=round(data["amount"], 1),
-                unit=data["unit"],
+                total_amount=amount,
+                unit=unit,
                 category=data["category"],
                 matched_offer=data["offer"],
                 estimated_price=round(data["price"], 2),
