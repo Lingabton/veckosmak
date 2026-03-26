@@ -62,10 +62,15 @@ function StoreSelector({ preferences, update }) {
       <button onClick={() => setOpen(!open)}
         className="w-full text-left px-4 py-2.5 rounded-xl border text-sm flex items-center justify-between"
         style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
-        <span>
-          <span style={{ color: 'var(--text-muted)' }}>Butik: </span>
-          <strong>ICA Maxi {currentName}</strong>
-        </span>
+        <div>
+          <span className="text-sm">
+            <span style={{ color: 'var(--text-muted)' }}>Butik: </span>
+            <strong>ICA Maxi {currentName}</strong>
+          </span>
+          {currentStore?.address && (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{currentStore.address}</p>
+          )}
+        </div>
         <span style={{ color: 'var(--text-muted)' }}>{open ? '▲' : 'Byt ▼'}</span>
       </button>
 
@@ -84,14 +89,18 @@ function StoreSelector({ preferences, update }) {
             )}
             {filtered.slice(0, 30).map(([id, store]) => (
               <button key={id} onClick={() => { update('store_id', id); setOpen(false); setSearch('') }}
-                className="w-full text-left px-4 py-2.5 text-sm border-b transition-colors hover:bg-gray-50"
+                className="w-full text-left px-4 py-2.5 border-b transition-colors hover:bg-gray-50"
                 style={{
                   borderColor: 'var(--border-light)',
                   backgroundColor: id === preferences.store_id ? 'var(--green-soft)' : 'transparent',
-                  fontWeight: id === preferences.store_id ? 600 : 400,
                 }}>
-                {store.city}
-                {id === preferences.store_id && <span className="ml-2" style={{ color: 'var(--green)' }}>✓</span>}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm" style={{ fontWeight: id === preferences.store_id ? 600 : 400 }}>{store.city}</span>
+                    {store.address && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{store.address}</p>}
+                  </div>
+                  {id === preferences.store_id && <span style={{ color: 'var(--green)' }}>✓</span>}
+                </div>
               </button>
             ))}
             {search && filtered.length === 0 && (
