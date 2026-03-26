@@ -34,9 +34,10 @@
     <meta name="twitter:description" content="Spara pengar varje vecka med en personlig veckomeny baserad pa din butiks erbjudanden. Gratis menyplanering." />
     <meta name="twitter:image" content="https://veckosmak.vercel.app/og-image.svg" />
 
-    <!-- Favicon -->
+    <!-- Favicon + PWA -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
+    <link rel="manifest" href="/manifest.json" />
 
     <!-- Theme -->
     <meta name="theme-color" content="#15803d" />
@@ -121,6 +122,8 @@
       ]
     }
     </script>
+    <!-- Analytics (Plausible — lightweight, cookie-free, GDPR-compliant) -->
+    <script defer data-domain="veckosmak.vercel.app" src="https://plausible.io/js/script.js"></script>
   </head>
   <body>
     <div id="root"></div>

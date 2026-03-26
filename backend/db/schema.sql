@@ -69,6 +69,38 @@ CREATE TABLE IF NOT EXISTS generated_menus (
 
 CREATE INDEX IF NOT EXISTS idx_menus_week ON generated_menus(store_id, year, week_number);
 
+-- Users
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    name TEXT,
+    preferences TEXT,            -- JSON: saved UserPreferences
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP
+);
+
+-- Magic link tokens
+CREATE TABLE IF NOT EXISTS auth_tokens (
+    token TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_email ON auth_tokens(email);
+
+-- Saved menus per user
+CREATE TABLE IF NOT EXISTS user_menus (
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users(id),
+    week_number INTEGER,
+    year INTEGER,
+    menu_data TEXT NOT NULL,      -- JSON: full WeeklyMenu
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_menus ON user_menus(user_id, year, week_number);
+
 -- Feedback
 CREATE TABLE IF NOT EXISTS feedback (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

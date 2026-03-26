@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     max_swaps_per_menu: int = 5
     cloudflare_account_id: str = ""
     cloudflare_api_token: str = ""
+    cron_secret: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

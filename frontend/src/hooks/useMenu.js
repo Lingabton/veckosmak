@@ -143,6 +143,8 @@ export function useMenu() {
       const data = await resp.json()
       setMenu(data)
       saveChecked({})
+      // Track menu generation
+      window.plausible?.('Menu Generated', { props: { meals: data.meals?.length, savings: Math.round(data.total_savings) } })
       // Fetch bonus offers (non-blocking)
       fetch(`/api/offers/bonus?menu_id=${data.id}&store_id=${preferences.store_id}`)
         .then(r => r.ok ? r.json() : { offers: [] })
@@ -170,9 +172,9 @@ export function useMenu() {
         const data = await resp.json().catch(() => ({}))
         throw new Error(data.detail || 'Kunde inte byta recept. Försök igen.')
       }
-      // Backend now returns full updated menu (with rebuilt shopping list)
       const updatedMenu = await resp.json()
       setMenu(updatedMenu)
+      window.plausible?.('Recipe Swapped', { props: { day } })
     } catch (e) {
       setError(e.message)
     } finally {

@@ -108,10 +108,36 @@ async def health():
     recipes = await get_all_recipes()
     return {
         "status": "ok",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "offers": len(offers),
         "recipes": len(recipes),
     }
+
+
+@app.post("/api/cron/scrape")
+async def cron_scrape(key: str = ""):
+    """Cron endpoint — call weekly to refresh offers.
+    Use with cron-job.org or UptimeRobot.
+    Set CRON_SECRET env var and pass as ?key=xxx for security.
+    """
+    expected = settings.cron_secret
+    if expected and key != expected:
+        raise HTTPException(status_code=403, detail="Invalid key")
+
+    scraper = IcaMaxiScraper()
+    try:
+        offers = await scraper.fetch_offers("ica-maxi-1004097")
+    except Exception as e:
+        logger.error(f"Cron scrape failed: {e}")
+        return {"status": "error", "detail": str(e)}
+
+    if offers:
+        await save_offers(offers)
+        logger.info(f"Cron: scraped {len(offers)} offers")
+        return {"status": "ok", "scraped": len(offers)}
+
+    logger.warning("Cron: 0 offers found")
+    return {"status": "warning", "scraped": 0}
 
 
 @app.get("/api/offers")
@@ -265,6 +291,45 @@ async def top_offers(store_id: str = "ica-maxi-1004097", limit: int = 8):
     scored.sort(key=lambda x: -x[1])
     top = [o.model_dump() for o, _ in scored[:limit]]
     return {"offers": top, "count": len(top)}
+
+
+# --- Auth endpoints ---
+
+class LoginRequest(BaseModel):
+    email: str
+
+
+@app.post("/api/auth/login")
+async def login(req: LoginRequest):
+    """Request a magic link. In production, sends email. For now, returns token directly."""
+    from backend.auth import create_magic_link
+    token = await create_magic_link(req.email)
+    # TODO: Send email with link https://veckosmak.vercel.app/auth?token=xxx
+    # For now, return token directly (dev mode)
+    login_url = f"{settings.frontend_url}#auth={token}"
+    logger.info(f"Magic link for {req.email}: {login_url}")
+    return {"status": "ok", "message": "Inloggningslänk skickad till din e-post", "token": token}
+
+
+@app.get("/api/auth/verify")
+async def verify(token: str):
+    """Verify a magic link token and return user data."""
+    from backend.auth import verify_token, get_user
+    email = await verify_token(token)
+    if not email:
+        raise HTTPException(status_code=401, detail="Länken har gått ut eller redan använts")
+    user = await get_user(email)
+    return {"status": "ok", "email": email, "user": user}
+
+
+@app.post("/api/user/preferences")
+async def save_prefs(preferences: UserPreferences, email: str = ""):
+    """Save preferences for a logged-in user."""
+    if not email:
+        return {"status": "ok", "note": "No user — preferences saved locally"}
+    from backend.auth import save_user_preferences
+    await save_user_preferences(email, preferences.model_dump())
+    return {"status": "ok"}
 
 
 class FeedbackRequest(BaseModel):
