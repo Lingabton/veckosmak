@@ -211,6 +211,7 @@ async def list_recipes(tags: str | None = None, diet: str | None = None, max_tim
 
 @app.post("/api/menu/generate")
 async def generate_weekly_menu(preferences: UserPreferences, request: Request):
+    from backend.analytics import log_preference, log_generation, update_recipe_stats
     _check_rate_limit(request.client.host)
 
     raw_offers = await get_current_offers(preferences.store_id)
@@ -224,6 +225,7 @@ async def generate_weekly_menu(preferences: UserPreferences, request: Request):
     offers = [_db_offer_to_model(o) for o in raw_offers]
     recipes = [_db_recipe_to_model(r) for r in raw_recipes]
 
+    start_time = time.time()
     try:
         menu = await generate_menu(offers, recipes, preferences)
     except ValueError as e:
@@ -231,16 +233,27 @@ async def generate_weekly_menu(preferences: UserPreferences, request: Request):
     except Exception as e:
         logger.error(f"Menu generation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Kunde inte generera meny just nu. Försök igen om en stund.")
+    duration_ms = int((time.time() - start_time) * 1000)
 
     if not menu.meals:
         raise HTTPException(status_code=500, detail="Menyn blev tom. Försök igen eller ändra dina preferenser.")
 
     _menu_cache[menu.id] = menu
-    # Keep cache bounded
     if len(_menu_cache) > 100:
         oldest = sorted(_menu_cache, key=lambda k: _menu_cache[k].generated_at)[:50]
         for k in oldest:
             del _menu_cache[k]
+
+    # Analytics (non-blocking)
+    try:
+        await log_preference(preferences.model_dump())
+        ai_provider = "fallback" if any(m.is_fallback for m in menu.meals) else "ai"
+        await log_generation(menu.id, ai_provider, len(menu.meals),
+                             menu.total_cost, menu.total_savings, len(raw_offers), duration_ms)
+        for meal in menu.meals:
+            await update_recipe_stats(meal.recipe.id, 'selected')
+    except Exception:
+        pass
 
     return menu
 
@@ -253,6 +266,7 @@ class SwapRequest(BaseModel):
 
 @app.post("/api/menu/swap")
 async def swap_menu_recipe(req: SwapRequest):
+    from backend.analytics import log_swap, update_recipe_stats
     menu = _menu_cache.get(req.menu_id)
     if not menu:
         raise HTTPException(status_code=404, detail="Menyn hittades inte. Generera en ny meny.")
@@ -272,6 +286,17 @@ async def swap_menu_recipe(req: SwapRequest):
     except Exception as e:
         logger.error(f"Swap failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Kunde inte byta recept just nu. Försök igen.")
+
+    # Log swap analytics
+    old_meal = next((m for m in menu.meals if m.day == req.day), None)
+    try:
+        if old_meal:
+            await log_swap(old_meal.recipe.id, old_meal.recipe.title,
+                          new_meal.recipe.id, new_meal.recipe.title, req.day, req.reason)
+            await update_recipe_stats(old_meal.recipe.id, 'swapped_away')
+            await update_recipe_stats(new_meal.recipe.id, 'selected')
+    except Exception:
+        pass
 
     # Update swap count and cached menu
     _swap_counts[req.menu_id] = swap_count + 1
@@ -362,10 +387,15 @@ class FeedbackRequest(BaseModel):
 @app.post("/api/menu/feedback")
 async def submit_feedback(req: FeedbackRequest):
     """Record user feedback on a recipe (like/dislike)."""
+    from backend.analytics import update_recipe_stats
     menu = _menu_cache.get(req.menu_id)
-    if not menu:
-        return {"status": "ok", "note": "Menu not in cache, feedback noted"}
-    # In future: persist to feedback table
+    if menu:
+        meal = next((m for m in menu.meals if m.day == req.day), None)
+        if meal:
+            try:
+                await update_recipe_stats(meal.recipe.id, req.action)
+            except Exception:
+                pass
     logger.info(f"Feedback: menu={req.menu_id} day={req.day} action={req.action}")
     return {"status": "ok"}
 

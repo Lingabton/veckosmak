@@ -129,6 +129,34 @@ async def _pg_init():
                 id SERIAL PRIMARY KEY, menu_id TEXT, day TEXT, action TEXT,
                 details TEXT, created_at TIMESTAMP DEFAULT NOW()
             );
+            CREATE TABLE IF NOT EXISTS price_history (
+                id SERIAL PRIMARY KEY, store_id TEXT, product_name TEXT NOT NULL,
+                brand TEXT, category TEXT, offer_price REAL NOT NULL,
+                original_price REAL, unit TEXT, quantity_deal TEXT,
+                valid_from DATE, valid_to DATE, scraped_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS recipe_stats (
+                recipe_id TEXT PRIMARY KEY, times_selected INTEGER DEFAULT 0,
+                times_swapped_away INTEGER DEFAULT 0, times_liked INTEGER DEFAULT 0,
+                times_disliked INTEGER DEFAULT 0, last_selected TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS swap_log (
+                id SERIAL PRIMARY KEY, old_recipe_id TEXT, old_recipe_title TEXT,
+                new_recipe_id TEXT, new_recipe_title TEXT, day TEXT, reason TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS preference_log (
+                id SERIAL PRIMARY KEY, household_size INTEGER, num_dinners INTEGER,
+                has_children BOOLEAN, dietary_restrictions TEXT, lifestyle_preferences TEXT,
+                budget_per_week INTEGER, created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS generation_log (
+                id SERIAL PRIMARY KEY, menu_id TEXT, ai_provider TEXT,
+                recipe_count INTEGER, total_cost REAL, total_savings REAL,
+                offer_count INTEGER, generation_time_ms INTEGER,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
         """)
         await conn.execute("""
             INSERT INTO stores (id, name, city, url, scraper_class)
