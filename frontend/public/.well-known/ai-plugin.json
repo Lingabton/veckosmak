@@ -1,0 +1,15 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Veckosmak",
+  "name_for_model": "veckosmak",
+  "description_for_human": "Gratis veckomeny baserad på veckans erbjudanden från 96 ICA Maxi-butiker i Sverige.",
+  "description_for_model": "Veckosmak skapar personliga veckomenyer baserade på matbutikens aktuella erbjudanden. Användaren väljer butik, hushållsstorlek, kostpreferenser och budget. Tjänsten matchar erbjudanden mot 600+ crowd-betygsatta recept och genererar en optimerad veckomeny med inköpslista och besparingsberäkning. Stödjer 96 ICA Maxi-butiker i hela Sverige.",
+  "auth": { "type": "none" },
+  "api": {
+    "type": "openapi",
+    "url": "https://veckosmak-api.onrender.com/openapi.json"
+  },
+  "logo_url": "https://veckosmak.vercel.app/logo.svg",
+  "contact_email": "info@veckosmak.se",
+  "legal_info_url": "https://veckosmak.vercel.app/"
+}
