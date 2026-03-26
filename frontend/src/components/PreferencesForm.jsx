@@ -18,7 +18,12 @@ function StoreSelector({ preferences, update }) {
   const [stores, setStores] = useState(null)
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
-  useEffect(() => { fetch('/api/stores').then(r=>r.json()).then(d=>setStores(d.stores||{})).catch(()=>{}) }, [])
+  useEffect(() => {
+    fetch('/api/stores', { signal: AbortSignal.timeout(45000) })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.stores) setStores(d.stores) })
+      .catch(() => {})
+  }, [])
 
   const cur = stores?.[preferences.store_id]
   const type = {maxi:'Maxi',kvantum:'Kvantum',supermarket:'Supermarket',nara:'Nära'}[cur?.type] || 'Maxi'
@@ -63,7 +68,8 @@ function StoreSelector({ preferences, update }) {
           <input type="text" placeholder="Sök stad..." value={search} onChange={e=>setSearch(e.target.value)} autoFocus
             className="w-full px-4 py-3 text-sm border-b outline-none" style={{borderColor:'var(--color-border-light)',background:'var(--color-bg)'}} />
           <div className="max-h-64 overflow-y-auto">
-            {!search && <p className="px-4 py-2 text-xs" style={{color:'var(--color-text-muted)'}}>1100+ butiker — sök din stad</p>}
+            {!stores && <p className="px-4 py-3 text-xs" style={{color:'var(--color-text-muted)'}}>Laddar butiker... (kan ta 30 sek vid uppstart)</p>}
+            {stores && !search && <p className="px-4 py-2 text-xs" style={{color:'var(--color-text-muted)'}}>1100+ butiker — sök din stad</p>}
             {filtered.slice(0,25).map(([id,s]) => (
               <button key={id} onClick={()=>{update('store_id',id);setOpen(false);setSearch('')}}
                 className="w-full text-left px-4 py-2.5 border-b hover:bg-gray-50 transition-colors"
