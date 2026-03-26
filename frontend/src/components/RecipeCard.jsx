@@ -1,262 +1,164 @@
 import { useState, useCallback } from 'react'
 
-const DAY_NAMES = {
-  monday: 'Måndag', tuesday: 'Tisdag', wednesday: 'Onsdag',
-  thursday: 'Torsdag', friday: 'Fredag', saturday: 'Lördag', sunday: 'Söndag',
-}
+const DAY_NAMES = {monday:'Måndag',tuesday:'Tisdag',wednesday:'Onsdag',thursday:'Torsdag',friday:'Fredag',saturday:'Lördag',sunday:'Söndag'}
 
-function kitchenRound(amount, unit, name = '') {
-  if (amount <= 0) return 0
-  // Skip silly items
-  const nameLower = name.toLowerCase()
-  if (nameLower.includes('vatten')) return 0 // Don't list water
-  if (['dl', 'msk', 'tsk'].includes(unit)) return amount <= 0.5 ? 0.5 : Math.round(amount * 2) / 2
-  if (unit === 'g') return amount < 50 ? Math.round(amount / 5) * 5 : amount < 500 ? Math.round(amount / 25) * 25 : Math.round(amount / 50) * 50
-  return Math.round(amount * 10) / 10
-}
-
-function Stars({ score }) {
-  if (!score || score <= 0) return null
-  return (
-    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-      <span className="text-amber-400">{'★'.repeat(Math.round(score))}</span> {score.toFixed(1)}
-    </span>
-  )
+function kitchenRound(amt, unit, name='') {
+  if (amt <= 0 || name.toLowerCase().includes('vatten')) return 0
+  if (['dl','msk','tsk'].includes(unit)) return amt<=0.5?0.5:Math.round(amt*2)/2
+  if (unit==='g') return amt<50?Math.round(amt/5)*5:amt<500?Math.round(amt/25)*25:Math.round(amt/50)*50
+  return Math.round(amt*10)/10
 }
 
 export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceExpand, index }) {
   const [expanded, setExpanded] = useState(false)
   const [feedback, setFeedback] = useState(null)
-  const [alternatives, setAlternatives] = useState(null)
+  const [alts, setAlts] = useState(null)
   const [loadingAlts, setLoadingAlts] = useState(false)
-  const { day, recipe, estimated_cost, estimated_cost_without_offers, offer_matches, scaled_servings, reasoning, popularity_score, mealprep_tip } = meal
 
-  const fetchAlternatives = useCallback(async () => {
-    if (alternatives) { setAlternatives(null); return }
-    setLoadingAlts(true)
-    try {
-      const menuId = meal._menuId || ''
-      const resp = await fetch('/api/menu/alternatives', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ menu_id: menuId, day }),
-      })
-      if (resp.ok) {
-        const data = await resp.json()
-        setAlternatives(data.alternatives || [])
-      }
-    } catch {}
-    setLoadingAlts(false)
-  }, [day, alternatives, meal._menuId])
+  const { day, recipe, estimated_cost, estimated_cost_without_offers, offer_matches, scaled_servings, reasoning, popularity_score, mealprep_tip } = meal
   const savings = estimated_cost_without_offers - estimated_cost
-  const pricePerPortion = scaled_servings > 0 ? Math.round(estimated_cost / scaled_servings) : 0
+  const pp = scaled_servings > 0 ? Math.round(estimated_cost / scaled_servings) : 0
   const scale = scaled_servings / (recipe.servings || 4)
   const isExpanded = expanded || forceExpand
 
-  return (
-    <article className={`rounded-2xl overflow-hidden border transition-shadow hover:shadow-md animate-fade-in stagger-${(index || 0) + 1}`}
-      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+  const fetchAlts = useCallback(async () => {
+    if (alts) { setAlts(null); return }
+    setLoadingAlts(true)
+    try {
+      const r = await fetch('/api/menu/alternatives', {method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({menu_id:meal._menuId||'',day})})
+      if (r.ok) { const d = await r.json(); setAlts(d.alternatives||[]) }
+    } catch {}
+    setLoadingAlts(false)
+  }, [day, alts, meal._menuId])
 
-      {/* Image + day badge */}
+  return (
+    <article className={`card card-interactive overflow-hidden fade-up delay-${(index||0)+1}`}>
+      {/* Image + overlay info */}
       <div className="cursor-pointer" onClick={() => setExpanded(!expanded)}>
         {recipe.image_url ? (
-          <div className="h-48 overflow-hidden recipe-img-overlay">
+          <div className="h-52 overflow-hidden img-overlay relative">
             <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" loading="lazy" />
-            <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold"
-              style={{ color: 'var(--green-deep)' }}>
-              {DAY_NAMES[day]}
+            <div className="absolute top-3 left-3 z-10">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/90 backdrop-blur-sm shadow-sm"
+                style={{color:'var(--color-brand-dark)'}}>{DAY_NAMES[day]}</span>
             </div>
           </div>
         ) : (
-          <div className="h-16 flex items-center px-5" style={{ backgroundColor: 'var(--green-soft)' }}>
-            <span className="text-sm font-semibold" style={{ color: 'var(--green-deep)' }}>{DAY_NAMES[day]}</span>
+          <div className="h-20 flex items-center px-5" style={{background:'var(--color-brand-light)'}}>
+            <span className="font-bold" style={{color:'var(--color-brand-dark)'}}>{DAY_NAMES[day]}</span>
           </div>
         )}
 
         <div className="p-4">
-          <h3 className="font-semibold text-base leading-snug">{recipe.title}</h3>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <Stars score={popularity_score} />
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{recipe.cook_time_minutes} min</span>
-            {offer_matches?.length > 0 && (
-              <span className="text-xs font-medium" style={{ color: 'var(--green)' }}>
-                {offer_matches.length} erbjudanden
-              </span>
-            )}
-            {recipe.tags?.includes('barnvänlig') && (
-              <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fef3c7', color: '#92400e' }}>Barnvänlig</span>
-            )}
+          <h3 className="font-bold text-base leading-snug">{recipe.title}</h3>
+
+          <div className="flex items-center gap-2 mt-1.5 text-xs flex-wrap" style={{color:'var(--color-text-muted)'}}>
+            {popularity_score > 0 && <span className="text-amber-400">{'★'.repeat(Math.round(popularity_score))} <span className="text-gray-400">{popularity_score.toFixed(1)}</span></span>}
+            <span>{recipe.cook_time_minutes} min</span>
+            {offer_matches?.length > 0 && <span style={{color:'var(--color-brand)'}}>{offer_matches.length} erbjudanden</span>}
+            {recipe.tags?.includes('barnvänlig') && <span style={{background:'#fef3c7',color:'#92400e',padding:'1px 6px',borderRadius:'4px'}}>Barnvänlig</span>}
           </div>
 
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{Math.round(estimated_cost)} kr</span>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{pricePerPortion} kr/port</span>
-              {savings > 1 && <span className="text-xs font-medium" style={{ color: 'var(--green)' }}>−{Math.round(savings)} kr</span>}
+              <span className="text-xl font-bold" style={{color:'var(--color-accent)'}}>{Math.round(estimated_cost)} kr</span>
+              <span className="text-xs" style={{color:'var(--color-text-muted)'}}>{pp} kr/port</span>
+              {savings > 1 && <span className="text-xs font-semibold" style={{color:'var(--color-brand)'}}>−{Math.round(savings)} kr</span>}
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={(e) => { e.stopPropagation(); fetchAlternatives() }}
-                disabled={swapping === day || loadingAlts}
-                className="text-xs px-2.5 py-1 rounded-full border transition-colors hover:shadow-sm"
-                style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-                {loadingAlts ? '...' : 'Byt'}
+              <button onClick={e=>{e.stopPropagation();fetchAlts()}} disabled={swapping===day||loadingAlts}
+                className="btn-secondary text-xs px-3 py-1.5 rounded-full">
+                {loadingAlts?'...':'Byt'}
               </button>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {isExpanded ? '▲' : '▼'}
-              </span>
+              <span className="text-xs" style={{color:'var(--color-text-muted)'}}>{isExpanded?'▲':'▼'}</span>
             </div>
           </div>
 
-          {/* Quick swap alternatives — shown on collapsed card */}
-          {alternatives && alternatives.length > 0 && (
-            <div className="mt-3 pt-3 space-y-1.5 animate-expand" style={{ borderTop: '1px solid var(--border-light)' }}>
-              <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Byt till:</p>
-              {alternatives.slice(0, 3).map(alt => (
-                <button key={alt.recipe_id}
-                  onClick={(e) => { e.stopPropagation(); setAlternatives(null); onSwap(day, '', alt.recipe_id) }}
-                  disabled={swapping === day}
-                  className="w-full text-left p-2.5 rounded-lg border transition-all hover:shadow-sm text-sm flex items-center justify-between"
-                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }}>
-                  <div className="min-w-0">
+          {/* Quick swap alternatives */}
+          {alts && alts.length > 0 && (
+            <div className="mt-3 pt-3 space-y-1.5 expand" style={{borderTop:'1px solid var(--color-border-light)'}}>
+              <p className="text-xs" style={{color:'var(--color-text-muted)'}}>Byt till:</p>
+              {alts.slice(0,3).map(alt => (
+                <button key={alt.recipe_id} onClick={e=>{e.stopPropagation();setAlts(null);onSwap(day,'',alt.recipe_id)}}
+                  className="card w-full text-left p-3 flex items-center justify-between text-sm" disabled={swapping===day}>
+                  <div>
                     <span className="font-medium">{alt.title}</span>
-                    <div className="flex items-center gap-2 text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    <div className="flex items-center gap-2 text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>
                       {alt.rating && <span className="text-amber-400">★ {alt.rating}</span>}
                       <span>{alt.cook_time_minutes} min</span>
-                      {alt.is_favorite && <span style={{ color: 'var(--accent)' }}>Favorit</span>}
+                      {alt.is_favorite && <span className="font-semibold" style={{color:'var(--color-accent)'}}>Favorit</span>}
                     </div>
                   </div>
-                  <span className="font-bold shrink-0 ml-2" style={{ color: 'var(--accent)' }}>{alt.price_per_portion} kr/p</span>
+                  <span className="font-bold shrink-0 ml-2" style={{color:'var(--color-accent)'}}>{alt.price_per_portion} kr/p</span>
                 </button>
               ))}
-              <button onClick={(e) => { e.stopPropagation(); setAlternatives(null) }}
-                className="w-full text-xs py-1" style={{ color: 'var(--text-muted)' }}>
-                Avbryt
-              </button>
+              <button onClick={e=>{e.stopPropagation();setAlts(null)}} className="w-full text-xs py-1" style={{color:'var(--color-text-muted)'}}>Avbryt</button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Expanded */}
+      {/* Expanded details */}
       {isExpanded && (
-        <div className="px-4 pb-4 animate-expand" style={{ borderTop: '1px solid var(--border-light)' }}>
+        <div className="px-4 pb-4 expand" style={{borderTop:'1px solid var(--color-border-light)'}}>
           <div className="pt-4">
-            {reasoning && <p className="text-sm italic mb-3" style={{ color: 'var(--text-muted)' }}>{reasoning}</p>}
+            {reasoning && <p className="text-sm italic mb-3" style={{color:'var(--color-text-muted)'}}>{reasoning}</p>}
 
-            {/* Nutrition */}
             {recipe.nutrition && (
-              <div className="flex gap-3 mb-4 text-xs font-medium">
-                {recipe.nutrition.calories && <span className="px-2.5 py-1 rounded-lg" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)' }}>{recipe.nutrition.calories} kcal</span>}
-                {recipe.nutrition.protein && <span className="px-2.5 py-1 rounded-lg" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>{recipe.nutrition.protein}g protein</span>}
+              <div className="flex gap-2 mb-3">
+                {recipe.nutrition.calories && <span className="text-xs font-medium px-2.5 py-1 rounded-lg" style={{background:'var(--color-accent-light)',color:'var(--color-accent)'}}>{recipe.nutrition.calories} kcal</span>}
+                {recipe.nutrition.protein && <span className="text-xs font-medium px-2.5 py-1 rounded-lg" style={{background:'#eff6ff',color:'#2563eb'}}>{recipe.nutrition.protein}g protein</span>}
               </div>
             )}
 
-            {mealprep_tip && (
-              <p className="text-xs p-2.5 rounded-lg mb-4" style={{ backgroundColor: '#f0f9ff', color: '#0369a1' }}>
-                <strong>Tips:</strong> {mealprep_tip}
-              </p>
-            )}
+            {mealprep_tip && <p className="text-xs p-3 rounded-xl mb-3" style={{background:'#f0f9ff',color:'#0369a1'}}><b>Tips:</b> {mealprep_tip}</p>}
 
-            {/* Offers */}
             {offer_matches?.length > 0 && (
               <div className="mb-4 space-y-1">
-                {offer_matches.map((o, i) => (
-                  <div key={i} className="flex justify-between text-xs py-1.5 px-3 rounded-lg" style={{ backgroundColor: 'var(--green-soft)' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>{o.product_name}</span>
-                    <span>
-                      <strong style={{ color: 'var(--green)' }}>{Math.round(o.offer_price)} {o.unit}</strong>
-                      {o.original_price && <span className="ml-1.5 line-through" style={{ color: 'var(--text-muted)' }}>{Math.round(o.original_price)}</span>}
-                    </span>
+                {offer_matches.map((o,i) => (
+                  <div key={i} className="flex justify-between text-xs py-1.5 px-3 rounded-lg" style={{background:'var(--color-brand-light)'}}>
+                    <span>{o.product_name}</span>
+                    <span><b style={{color:'var(--color-brand)'}}>{Math.round(o.offer_price)} {o.unit}</b>
+                    {o.original_price && <span className="ml-1.5 line-through" style={{color:'var(--color-text-muted)'}}>{Math.round(o.original_price)}</span>}</span>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Ingredients */}
-            <h4 className="font-medium text-sm mb-2">Ingredienser <span style={{ color: 'var(--text-muted)' }}>({scaled_servings} port)</span></h4>
-            <ul className="text-sm space-y-0.5 mb-4" style={{ color: 'var(--text-secondary)' }}>
-              {recipe.ingredients.map((ing, i) => {
-                const amt = kitchenRound(ing.amount * scale, ing.unit, ing.name)
-                if (amt === 0 && ing.amount > 0 && ing.name.toLowerCase().includes('vatten')) return null
-                return <li key={i}>{amt > 0 && <span style={{ color: 'var(--text-muted)' }}>{amt} {ing.unit} </span>}{ing.name}</li>
+            <h4 className="font-bold text-sm mb-2">Ingredienser <span style={{color:'var(--color-text-muted)',fontWeight:400}}>({scaled_servings} port)</span></h4>
+            <ul className="text-sm space-y-0.5 mb-4" style={{color:'var(--color-text-secondary)'}}>
+              {recipe.ingredients.map((ing,i) => {
+                const amt = kitchenRound(ing.amount*scale, ing.unit, ing.name)
+                if (amt===0 && ing.amount>0 && ing.name.toLowerCase().includes('vatten')) return null
+                return <li key={i}>{amt>0&&<span style={{color:'var(--color-text-muted)'}}>{amt} {ing.unit} </span>}{ing.name}</li>
               })}
             </ul>
 
-            {/* Instructions */}
-            <h4 className="font-medium text-sm mb-2">Instruktioner</h4>
-            <ol className="text-sm space-y-2 mb-4" style={{ color: 'var(--text-secondary)' }}>
-              {recipe.instructions.map((step, i) => (
+            <h4 className="font-bold text-sm mb-2">Gör så här</h4>
+            <ol className="text-sm space-y-2 mb-4" style={{color:'var(--color-text-secondary)'}}>
+              {recipe.instructions.map((step,i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="font-medium shrink-0" style={{ color: 'var(--green)' }}>{i + 1}.</span>
+                  <span className="font-bold shrink-0" style={{color:'var(--color-brand)'}}>{i+1}.</span>
                   <span>{step}</span>
                 </li>
               ))}
             </ol>
 
-            {recipe.source_url && (
-              <a href={recipe.source_url} target="_blank" rel="noopener noreferrer"
-                className="text-sm underline mb-4 inline-block" style={{ color: 'var(--green)' }}>
-                Originalrecept
-              </a>
-            )}
+            {recipe.source_url && <a href={recipe.source_url} target="_blank" rel="noopener noreferrer"
+              className="text-sm font-medium mb-3 inline-block" style={{color:'var(--color-brand)'}}>Originalrecept →</a>}
 
-            {/* Feedback + Alternatives */}
-            <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Betyg:</span>
-                {['liked', 'disliked'].map(action => (
-                  <button key={action} onClick={(e) => { e.stopPropagation(); setFeedback(action); onFeedback?.(day, action) }}
-                    className={`w-9 h-9 rounded-full border text-sm transition-all ${feedback === action ? 'scale-110 shadow-sm' : ''}`}
-                    style={{
-                      borderColor: feedback === action ? (action === 'liked' ? 'var(--green)' : '#ef4444') : 'var(--border)',
-                      backgroundColor: feedback === action ? (action === 'liked' ? 'var(--green-soft)' : '#fef2f2') : 'transparent',
-                    }}>
-                    {action === 'liked' ? '↑' : '↓'}
-                  </button>
-                ))}
-                {feedback && <span className="text-xs" style={{ color: 'var(--green)' }}>Tack!</span>}
-              </div>
-
-              {/* Show alternatives */}
-              <button onClick={(e) => { e.stopPropagation(); fetchAlternatives() }}
-                disabled={loadingAlts}
-                className="w-full py-2 text-sm border rounded-lg transition-colors"
-                style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
-                {loadingAlts ? 'Hämtar alternativ...' : alternatives ? 'Dölj alternativ' : 'Visa alternativ'}
-              </button>
-
-              {alternatives && alternatives.length > 0 && (
-                <div className="mt-3 space-y-2 animate-expand">
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Välj ett alternativ:</p>
-                  {alternatives.map(alt => (
-                    <button key={alt.recipe_id}
-                      onClick={(e) => { e.stopPropagation(); onSwap(day, '', alt.recipe_id) }}
-                      disabled={swapping === day}
-                      className="w-full text-left p-3 rounded-xl border transition-all hover:shadow-sm"
-                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{alt.title}</span>
-                            {alt.is_favorite && (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full"
-                                style={{ backgroundColor: '#fef3c7', color: '#92400e' }}>Favorit</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {alt.rating && <span className="text-amber-400">{'★'.repeat(Math.round(alt.rating))} {alt.rating}</span>}
-                            <span>{alt.cook_time_minutes} min</span>
-                            {alt.offer_matches > 0 && <span style={{ color: 'var(--green)' }}>{alt.offer_matches} erbjudanden</span>}
-                          </div>
-                        </div>
-                        <span className="font-bold text-sm shrink-0" style={{ color: 'var(--accent)' }}>
-                          {alt.price_per_portion} kr/port
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="flex items-center gap-2 pt-3 mt-2" style={{borderTop:'1px solid var(--color-border-light)'}}>
+              <span className="text-xs" style={{color:'var(--color-text-muted)'}}>Betyg:</span>
+              {['liked','disliked'].map(a => (
+                <button key={a} onClick={e=>{e.stopPropagation();setFeedback(a);onFeedback?.(day,a)}}
+                  className={`stepper-btn text-sm ${feedback===a?'scale-110':''}`}
+                  style={{borderColor:feedback===a?(a==='liked'?'var(--color-brand)':'#e03131'):'var(--color-border)',
+                    background:feedback===a?(a==='liked'?'var(--color-brand-light)':'#fff5f5'):'transparent'}}>
+                  {a==='liked'?'👍':'👎'}
+                </button>
+              ))}
+              {feedback && <span className="text-xs font-medium" style={{color:'var(--color-brand)'}}>Tack!</span>}
             </div>
           </div>
         </div>

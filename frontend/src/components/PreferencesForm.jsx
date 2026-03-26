@@ -1,131 +1,85 @@
 import { useState, useEffect } from 'react'
 
-// Map regions/cities so "Stockholm" finds Nacka, Solna, Arninge etc.
-const REGION_ALIASES = {
-  'stockholm': ['arninge','barkarbystaden','haninge','nacka','solna','lindhagen','bromma','flemingsberg','botkyrka','haggvik','osteraker','varmd','nynashamn','tumba'],
-  'göteborg': ['angered','backaplan','goteborg','hogsbo','torslanda','partille','kungalv'],
-  'malmö': ['malmo','burlov','toftanas','vastra hamnen','loddekopin'],
-  'örebro': ['orebro','boglundsangen','universitetet'],
-  'uppsala': ['stenhagen','gnista'],
-  'västerås': ['erikslund','halla','vasteras'],
-  'halmstad': ['hogskolan','flygstaden'],
-  'helsingborg': ['raa','hyllinge'],
-  'södertälje': ['vasa handelsplats','moraberg','sodertalje'],
-  'gävle': ['gavle','brynas'],
-  'karlstad': ['valsviken'],
-  'lund': ['gunnesbo'],
-}
+const DIETS = [
+  { v: 'vegetarian', l: 'Vegetarisk' }, { v: 'vegan', l: 'Vegansk' },
+  { v: 'glutenfree', l: 'Glutenfri' }, { v: 'dairyfree', l: 'Mjölkfri' },
+  { v: 'lactosefree', l: 'Laktosfri' }, { v: 'porkfree', l: 'Fläskfri' },
+]
+const LIFESTYLES = [
+  { v: 'avoid_processed', l: 'Undvik processad' }, { v: 'prefer_healthy', l: 'Hälsosammare' },
+  { v: 'prefer_highprotein', l: 'Proteinrikt' }, { v: 'prefer_lowcarb', l: 'Lågkolhydrat' },
+  { v: 'prefer_sustainable', l: 'Klimatsmart' }, { v: 'reduce_waste', l: 'Minska svinn' },
+]
+const DISLIKES = ['räkor','selleri','koriander','svamp','oliver','paprika','chili','ingefära','kokos','anjovis']
+const DAYS = [{v:'monday',l:'Mån'},{v:'tuesday',l:'Tis'},{v:'wednesday',l:'Ons'},{v:'thursday',l:'Tor'},{v:'friday',l:'Fre'},{v:'saturday',l:'Lör'},{v:'sunday',l:'Sön'}]
 
-function normalize(s) {
-  return s.toLowerCase()
-    .replace(/å/g,'a').replace(/ä/g,'a').replace(/ö/g,'o')
-    .replace(/é/g,'e').replace(/ü/g,'u')
-}
-
-function matchesSearch(city, query, address = '') {
-  if (!query) return true
-  const q = normalize(query)
-  const c = normalize(city)
-  const a = normalize(address)
-  // Direct match in city or address
-  if (c.includes(q) || a.includes(q)) return true
-  // Region alias match
-  for (const [region, aliases] of Object.entries(REGION_ALIASES)) {
-    if (region.includes(q) || normalize(region).includes(q)) {
-      if (aliases.some(al => c.includes(al) || a.includes(al))) return true
-    }
-  }
-  return false
-}
-
+// Store selector
 function StoreSelector({ preferences, update }) {
   const [stores, setStores] = useState(null)
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
+  useEffect(() => { fetch('/api/stores').then(r=>r.json()).then(d=>setStores(d.stores||{})).catch(()=>{}) }, [])
 
-  useEffect(() => {
-    fetch('/api/stores')
-      .then(r => r.ok ? r.json() : { stores: {} })
-      .then(d => setStores(d.stores || {}))
-      .catch(() => {})
-  }, [])
+  const cur = stores?.[preferences.store_id]
+  const type = {maxi:'Maxi',kvantum:'Kvantum',supermarket:'Supermarket',nara:'Nära'}[cur?.type] || 'Maxi'
 
-  const currentStore = stores?.[preferences.store_id]
-  const currentName = currentStore?.city || 'Örebro Boglundsängen'
-  const currentType = currentStore?.type ? ({ maxi: 'Maxi', kvantum: 'Kvantum', supermarket: 'Supermarket', nara: 'Nära' }[currentStore.type] || '') : 'Maxi'
+  const normalize = s => s.toLowerCase().replace(/[åÅ]/g,'a').replace(/[äÄ]/g,'a').replace(/[öÖ]/g,'o').replace(/[éÉ]/g,'e')
+  const ALIASES = {
+    'stockholm':['arninge','barkarbystaden','haninge','nacka','solna','lindhagen','bromma','flemingsberg','botkyrka','haggvik','osteraker','varmd','nynashamn'],
+    'göteborg':['angered','backaplan','goteborg','hogsbo','torslanda','partille','kungalv'],
+    'malmö':['malmo','burlov','toftanas','vastra hamnen'],
+    'örebro':['orebro','boglundsangen','universitetet'],
+    'uppsala':['stenhagen','gnista'],'västerås':['erikslund','halla','vasteras'],
+    'södertälje':['vasa handelsplats','moraberg','sodertalje'],'gävle':['gavle','brynas'],
+  }
+  const match = (city, addr, q) => {
+    if (!q) return true
+    const nq = normalize(q), nc = normalize(city), na = normalize(addr||'')
+    if (nc.includes(nq) || na.includes(nq)) return true
+    for (const [r, aliases] of Object.entries(ALIASES))
+      if (r.includes(nq) || normalize(r).includes(nq))
+        if (aliases.some(a => nc.includes(a) || na.includes(a))) return true
+    return false
+  }
 
   const filtered = stores ? Object.entries(stores)
-    .filter(([_, s]) => matchesSearch(s.city, search, s.address || ''))
-    .sort((a, b) => {
-      // Rank: maxi=1, kvantum=2, supermarket=3, nara=4
-      const ra = a[1].rank || 4
-      const rb = b[1].rank || 4
-      if (search && ra !== rb) return ra - rb // Maxi first when searching
-      return a[1].city.localeCompare(b[1].city, 'sv')
-    })
+    .filter(([_,s]) => match(s.city, s.address, search))
+    .sort((a,b) => { if (search && a[1].rank !== b[1].rank) return a[1].rank - b[1].rank; return a[1].city.localeCompare(b[1].city,'sv') })
     : []
 
-  const TYPE_LABELS = { maxi: 'Maxi', kvantum: 'Kvantum', supermarket: 'Supermarket', nara: 'Nära' }
-  const TYPE_COLORS = { maxi: 'var(--accent)', kvantum: 'var(--green)', supermarket: 'var(--text-secondary)', nara: 'var(--text-muted)' }
+  const typeColor = {maxi:'var(--color-accent)',kvantum:'var(--color-brand)',supermarket:'var(--color-text-secondary)',nara:'var(--color-text-muted)'}
 
   return (
     <div className="mb-6">
-      <button onClick={() => setOpen(!open)}
-        className="w-full text-left px-4 py-2.5 rounded-xl border text-sm flex items-center justify-between"
-        style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
+      <button onClick={() => setOpen(!open)} className="card w-full text-left px-4 py-3 flex items-center justify-between">
         <div>
-          <span className="text-sm">
-            <span style={{ color: 'var(--text-muted)' }}>Butik: </span>
-            <strong>ICA {currentType} {currentName}</strong>
-          </span>
-          {currentStore?.address && (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{currentStore.address}</p>
-          )}
+          <p className="text-sm font-medium">ICA {type} {cur?.city || 'Örebro Boglundsängen'}</p>
+          {cur?.address && <p className="text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>{cur.address}</p>}
         </div>
-        <span style={{ color: 'var(--text-muted)' }}>{open ? '▲' : 'Byt ▼'}</span>
+        <span className="text-sm" style={{color:'var(--color-text-muted)'}}>{open ? '▲' : 'Byt butik'}</span>
       </button>
-
       {open && (
-        <div className="mt-2 rounded-xl border overflow-hidden animate-expand"
-          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
-          <input type="text" placeholder="Sök stad eller område..." value={search}
-            onChange={e => setSearch(e.target.value)} autoFocus
-            className="w-full px-4 py-2.5 text-sm border-b focus:outline-none"
-            style={{ borderColor: 'var(--border-light)', backgroundColor: 'var(--bg)' }} />
+        <div className="card mt-2 overflow-hidden expand">
+          <input type="text" placeholder="Sök stad..." value={search} onChange={e=>setSearch(e.target.value)} autoFocus
+            className="w-full px-4 py-3 text-sm border-b outline-none" style={{borderColor:'var(--color-border-light)',background:'var(--color-bg)'}} />
           <div className="max-h-64 overflow-y-auto">
-            {!search && (
-              <p className="px-4 py-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                1100+ butiker — sök din stad
-              </p>
-            )}
-            {filtered.slice(0, 30).map(([id, store]) => (
-              <button key={id} onClick={() => { update('store_id', id); setOpen(false); setSearch('') }}
-                className="w-full text-left px-4 py-2.5 border-b transition-colors hover:bg-gray-50"
-                style={{
-                  borderColor: 'var(--border-light)',
-                  backgroundColor: id === preferences.store_id ? 'var(--green-soft)' : 'transparent',
-                }}>
+            {!search && <p className="px-4 py-2 text-xs" style={{color:'var(--color-text-muted)'}}>1100+ butiker — sök din stad</p>}
+            {filtered.slice(0,25).map(([id,s]) => (
+              <button key={id} onClick={()=>{update('store_id',id);setOpen(false);setSearch('')}}
+                className="w-full text-left px-4 py-2.5 border-b hover:bg-gray-50 transition-colors"
+                style={{borderColor:'var(--color-border-light)', background: id===preferences.store_id?'var(--color-brand-light)':'transparent'}}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm" style={{ fontWeight: id === preferences.store_id ? 600 : 400 }}>{store.city}</span>
-                    <div className="flex items-center gap-2">
-                      {store.type && (
-                        <span className="text-xs font-medium" style={{ color: TYPE_COLORS[store.type] || 'var(--text-muted)' }}>
-                          {TYPE_LABELS[store.type] || store.type}
-                        </span>
-                      )}
-                      {store.address && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{store.address}</span>}
-                    </div>
+                    <span className="text-sm font-medium">{s.city}</span>
+                    <span className="text-xs ml-2 font-medium" style={{color:typeColor[s.type]||'var(--color-text-muted)'}}>
+                      {({maxi:'Maxi',kvantum:'Kvantum',supermarket:'Super',nara:'Nära'})[s.type]}
+                    </span>
+                    {s.address && <p className="text-xs" style={{color:'var(--color-text-muted)'}}>{s.address}</p>}
                   </div>
-                  {id === preferences.store_id && <span style={{ color: 'var(--green)' }}>✓</span>}
+                  {id===preferences.store_id && <span style={{color:'var(--color-brand)'}}>✓</span>}
                 </div>
               </button>
             ))}
-            {search && filtered.length === 0 && (
-              <p className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>
-                Ingen ICA Maxi hittades för "{search}"
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -133,278 +87,169 @@ function StoreSelector({ preferences, update }) {
   )
 }
 
-const DIET_OPTIONS = [
-  { value: 'vegetarian', label: 'Vegetarisk' },
-  { value: 'vegan', label: 'Vegansk' },
-  { value: 'glutenfree', label: 'Glutenfri' },
-  { value: 'dairyfree', label: 'Mjölkfri' },
-  { value: 'lactosefree', label: 'Laktosfri' },
-  { value: 'porkfree', label: 'Fläskfri' },
-]
-const LIFESTYLE_OPTIONS = [
-  { value: 'avoid_processed', label: 'Undvik processad' },
-  { value: 'prefer_healthy', label: 'Hälsosammare' },
-  { value: 'prefer_highprotein', label: 'Proteinrikt' },
-  { value: 'prefer_lowcarb', label: 'Lågkolhydrat' },
-  { value: 'prefer_sustainable', label: 'Klimatsmart' },
-  { value: 'prefer_seasonal', label: 'Säsong' },
-  { value: 'reduce_waste', label: 'Minska svinn' },
-]
-const COMMON_DISLIKES = ['räkor','selleri','koriander','svamp','oliver','paprika','chili','ingefära','kokos','anjovis']
-const ALL_DAYS = [
-  { value: 'monday', label: 'Mån' },{ value: 'tuesday', label: 'Tis' },
-  { value: 'wednesday', label: 'Ons' },{ value: 'thursday', label: 'Tor' },
-  { value: 'friday', label: 'Fre' },{ value: 'saturday', label: 'Lör' },
-  { value: 'sunday', label: 'Sön' },
-]
-
-function Pill({ active, onClick, children, variant = 'green' }) {
-  const s = variant === 'red' && active
-    ? { backgroundColor: '#fef2f2', color: '#b91c1c', borderColor: '#fecaca' }
-    : active
-      ? { backgroundColor: 'var(--green)', color: 'white', borderColor: 'var(--green)' }
-      : { borderColor: 'var(--border)' }
-  return <button onClick={onClick} style={s} className="px-3.5 py-2 rounded-full text-sm border transition-all hover:shadow-sm">{children}</button>
-}
-
-function Stepper({ value, onChange, min, max, label }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{label}</label>
-      <div className="flex items-center gap-3">
-        <button onClick={() => onChange(Math.max(min, value - 1))}
-          className="w-11 h-11 rounded-full border text-lg font-medium transition-colors hover:shadow-sm" style={{ borderColor: 'var(--border)' }}>−</button>
-        <span className="text-xl font-semibold w-12 text-center">{value}</span>
-        <button onClick={() => onChange(Math.min(max, value + 1))}
-          className="w-11 h-11 rounded-full border text-lg font-medium transition-colors hover:shadow-sm" style={{ borderColor: 'var(--border)' }}>+</button>
-      </div>
-    </div>
-  )
-}
-
-// Static demo menu for "value before effort"
-function DemoMenu() {
-  const meals = [
-    { day: 'Måndag', title: 'Kycklingwok med grönsaker', time: 25, price: 32, stars: 4.3 },
-    { day: 'Tisdag', title: 'Pasta carbonara', time: 20, price: 18, stars: 4.6 },
-    { day: 'Onsdag', title: 'Laxfilé med potatisgratäng', time: 40, price: 38, stars: 4.5 },
-    { day: 'Torsdag', title: 'Köttfärssås med spaghetti', time: 30, price: 22, stars: 4.4 },
-  ]
-  return (
-    <div className="rounded-2xl border p-4 mb-8" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm">Exempel: Så kan din vecka se ut</h3>
-        <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--green-soft)', color: 'var(--green)' }}>
-          Sparar ~280 kr
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        {meals.map(m => (
-          <div key={m.day} className="p-2.5 rounded-xl" style={{ backgroundColor: 'var(--bg)' }}>
-            <p className="text-xs font-medium" style={{ color: 'var(--green)' }}>{m.day}</p>
-            <p className="text-sm font-medium mt-0.5 leading-snug">{m.title}</p>
-            <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <span className="text-amber-400">{'★'.repeat(Math.round(m.stars))}</span>
-              <span>{m.time} min</span>
-              <span style={{ color: 'var(--accent)' }}>{m.price} kr/port</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export default function PreferencesForm({ preferences, setPreferences, onGenerate, onGenerateDirect, loading, isReturning }) {
+export default function PreferencesForm({ preferences, setPreferences, goToOffers, generateMenu, loading, isReturning }) {
   const [showMore, setShowMore] = useState(false)
-  const update = (key, value) => setPreferences({ ...preferences, [key]: value })
-  const toggleList = (key, value) => {
-    const c = preferences[key] || []
-    update(key, c.includes(value) ? c.filter(d => d !== value) : [...c, value])
-  }
-  const toggleDay = (day) => {
-    const c = preferences.selected_days || []
-    const next = c.includes(day) ? c.filter(d => d !== day) : [...c, day]
-    setPreferences({ ...preferences, selected_days: next, num_dinners: next.length || preferences.num_dinners })
-  }
-  const useSpecificDays = (preferences.selected_days || []).length > 0
-  const hasAdvanced = preferences.dietary_restrictions?.length > 0 ||
-    (preferences.lifestyle_preferences || []).length > 0 ||
-    preferences.disliked_ingredients?.length > 0 ||
-    preferences.has_children || preferences.budget_per_week !== null
-
-  const setTimeMix = (preset) => {
-    if (!preset) setPreferences({ ...preferences, max_cook_time: null, time_mix: null })
-    else if (preset.q) setPreferences({ ...preferences, max_cook_time: 30, time_mix: null })
-    else if (preset.mix) {
-      const q = Math.ceil(preferences.num_dinners / 2)
-      setPreferences({ ...preferences, max_cook_time: null, time_mix: { quick_count: q, medium_count: 0, slow_count: preferences.num_dinners - q } })
-    } else if (preset.max) setPreferences({ ...preferences, max_cook_time: preset.max, time_mix: null })
-  }
-  const tmMode = preferences.time_mix ? 'mix' : preferences.max_cook_time ? 'max' : 'none'
+  const update = (k,v) => setPreferences({...preferences, [k]: v})
+  const toggle = (k,v) => { const c = preferences[k]||[]; update(k, c.includes(v)?c.filter(d=>d!==v):[...c,v]) }
+  const hasAdv = preferences.dietary_restrictions?.length>0||(preferences.lifestyle_preferences||[]).length>0||preferences.disliked_ingredients?.length>0||preferences.has_children||preferences.budget_per_week!==null
 
   return (
-    <div className="animate-fade-in">
+    <div className="fade-up">
       {/* Hero */}
-      <section className="text-center mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-3">
-          Middagar som sparar dig <span style={{ color: 'var(--accent)' }}>pengar</span>
+      <section className="text-center mb-10">
+        <h1 className="text-4xl font-bold tracking-tight leading-tight mb-4">
+          Middagar som sparar<br/>dig <span style={{color:'var(--color-accent)'}}>pengar</span>
         </h1>
-        <p className="text-base leading-relaxed max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
-          Vi matchar veckans erbjudanden mot populära recept och skapar
-          en komplett veckomeny med inköpslista.
+        <p className="text-lg leading-relaxed max-w-md mx-auto" style={{color:'var(--color-text-secondary)'}}>
+          Vi matchar veckans erbjudanden mot populära recept och skapar din veckomeny med inköpslista.
         </p>
-        <div className="flex items-center justify-center gap-6 mt-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex items-center justify-center gap-6 mt-6 text-sm font-medium" style={{color:'var(--color-text-muted)'}}>
           <span>600+ recept</span>
-          <span style={{ color: 'var(--border)' }}>·</span>
+          <span className="w-1 h-1 rounded-full" style={{background:'var(--color-border)'}} />
           <span>Spara 200–400 kr/v</span>
-          <span style={{ color: 'var(--border)' }}>·</span>
+          <span className="w-1 h-1 rounded-full" style={{background:'var(--color-border)'}} />
           <span>Helt gratis</span>
         </div>
       </section>
 
-      {/* Demo menu — value before effort */}
-      {!isReturning && <DemoMenu />}
+      {/* Demo preview for new users */}
+      {!isReturning && (
+        <div className="card p-5 mb-8 fade-in">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold">Exempel: Så kan din vecka se ut</h3>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{background:'var(--color-brand-light)',color:'var(--color-brand)'}}>Sparar ~280 kr</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              {d:'Mån',t:'Kycklingwok med grönsaker',m:25,p:32,s:4.3},
+              {d:'Tis',t:'Pasta carbonara',m:20,p:18,s:4.6},
+              {d:'Ons',t:'Laxfilé med potatisgratäng',m:40,p:38,s:4.5},
+              {d:'Tor',t:'Köttfärssås med spaghetti',m:30,p:22,s:4.4},
+            ].map(r => (
+              <div key={r.d} className="p-3 rounded-xl" style={{background:'var(--color-bg)'}}>
+                <p className="text-xs font-semibold" style={{color:'var(--color-brand)'}}>{r.d}</p>
+                <p className="text-sm font-medium mt-0.5 leading-snug">{r.t}</p>
+                <p className="text-xs mt-1" style={{color:'var(--color-text-muted)'}}>
+                  <span className="text-amber-400">{'★'.repeat(Math.round(r.s))}</span> {r.m} min · <span style={{color:'var(--color-accent)'}}>{r.p} kr/p</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* Returning user — single clear CTA */}
+      {/* Returning user shortcut */}
       {isReturning && (
-        <div className="mb-6 animate-fade-in">
-          <button onClick={onGenerateDirect} disabled={loading}
-            className="w-full py-4 rounded-xl text-white font-semibold text-lg disabled:opacity-50 transition-colors"
-            style={{ backgroundColor: 'var(--accent)' }}>
+        <div className="mb-6 fade-in">
+          <button onClick={generateMenu} disabled={loading} className="btn btn-primary w-full text-lg py-4">
             Skapa veckans meny
           </button>
-          <button onClick={() => setShowMore(true)}
-            className="w-full text-sm mt-2 py-1" style={{ color: 'var(--text-muted)' }}>
-            Ändra inställningar först
+          <button onClick={() => setShowMore(true)} className="w-full text-sm mt-2 py-1" style={{color:'var(--color-text-muted)'}}>
+            Ändra inställningar
           </button>
         </div>
       )}
 
-      {/* Store picker */}
       <StoreSelector preferences={preferences} update={update} />
 
-      {/* Form — hidden for returning users unless they click "Ändra" */}
+      {/* Form */}
       {(!isReturning || showMore) && (
-        <div className="rounded-2xl p-6 border animate-fade-in" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="card p-6 fade-in">
           <div className="space-y-6">
+            {/* Core settings */}
             <div className="grid grid-cols-2 gap-6">
-              <Stepper value={preferences.household_size} onChange={v => update('household_size', v)} min={1} max={8} label="Antal personer" />
-              {!useSpecificDays && <Stepper value={preferences.num_dinners} onChange={v => update('num_dinners', v)} min={1} max={7} label="Middagar" />}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Antal personer</label>
+                <div className="flex items-center gap-3">
+                  <button className="stepper-btn" onClick={()=>update('household_size',Math.max(1,preferences.household_size-1))}>−</button>
+                  <span className="text-2xl font-bold w-8 text-center">{preferences.household_size}</span>
+                  <button className="stepper-btn" onClick={()=>update('household_size',Math.min(8,preferences.household_size+1))}>+</button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Middagar</label>
+                <div className="flex items-center gap-3">
+                  <button className="stepper-btn" onClick={()=>update('num_dinners',Math.max(1,preferences.num_dinners-1))}>−</button>
+                  <span className="text-2xl font-bold w-8 text-center">{preferences.num_dinners}</span>
+                  <button className="stepper-btn" onClick={()=>update('num_dinners',Math.min(7,preferences.num_dinners+1))}>+</button>
+                </div>
+              </div>
             </div>
 
-            {/* Advanced toggle */}
-            <button onClick={() => setShowMore(!showMore)}
-              className="w-full text-sm py-1" style={{ color: 'var(--text-muted)' }}>
-              {showMore && hasAdvanced ? 'Dölj ▲' : `Fler inställningar${hasAdvanced ? ' (aktiva)' : ''} ▼`}
+            {/* More settings toggle */}
+            <button onClick={()=>setShowMore(!showMore)}
+              className="w-full text-sm py-2 font-medium transition-colors" style={{color:'var(--color-text-muted)'}}>
+              {showMore ? 'Dölj inställningar ▲' : `Fler inställningar${hasAdv?' ●':''} ▼`}
             </button>
 
             {showMore && (
-              <div className="space-y-5 pt-4 animate-expand" style={{ borderTop: '1px solid var(--border-light)' }}>
-                <label className="flex items-center gap-3 cursor-pointer text-sm">
-                  <input type="checkbox" checked={preferences.has_children} onChange={e => update('has_children', e.target.checked)}
+              <div className="space-y-5 pt-4 expand" style={{borderTop:'1px solid var(--color-border-light)'}}>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={preferences.has_children} onChange={e=>update('has_children',e.target.checked)}
                     className="w-5 h-5 rounded accent-green-700" />
-                  Hushållet har barn
+                  <span className="text-sm">Hushållet har barn</span>
                 </label>
-
-                {/* Days */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Specifika dagar</label>
-                    <input type="checkbox" checked={useSpecificDays}
-                      onChange={e => {
-                        if (!e.target.checked) setPreferences({ ...preferences, selected_days: [] })
-                        else setPreferences({ ...preferences, selected_days: ALL_DAYS.slice(0, preferences.num_dinners).map(d => d.value) })
-                      }} className="w-5 h-5 rounded accent-green-700" />
-                  </div>
-                  {useSpecificDays && (
-                    <div className="flex gap-1.5">
-                      {ALL_DAYS.map(d => (
-                        <button key={d.value} onClick={() => toggleDay(d.value)}
-                          className="w-11 h-11 rounded-full text-xs font-medium border transition-all"
-                          style={(preferences.selected_days||[]).includes(d.value)?{backgroundColor:'var(--green)',color:'white',borderColor:'var(--green)'}:{borderColor:'var(--border)'}}>
-                          {d.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
                 {/* Budget */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Veckobudget</label>
-                    <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      <span>{preferences.budget_per_week ? `${preferences.budget_per_week} kr` : 'Av'}</span>
-                      <input type="checkbox" checked={preferences.budget_per_week !== null}
-                        onChange={e => update('budget_per_week', e.target.checked ? 1000 : null)}
-                        className="w-5 h-5 rounded accent-green-700" />
-                    </div>
+                    <span className="text-sm font-medium" style={{color:'var(--color-text-secondary)'}}>Budget</span>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer" style={{color:'var(--color-text-muted)'}}>
+                      {preferences.budget_per_week ? `${preferences.budget_per_week} kr` : 'Av'}
+                      <input type="checkbox" checked={preferences.budget_per_week!==null} onChange={e=>update('budget_per_week',e.target.checked?1000:null)}
+                        className="w-4 h-4 rounded accent-green-700" />
+                    </label>
                   </div>
-                  {preferences.budget_per_week !== null && (
+                  {preferences.budget_per_week!==null && (
                     <input type="range" min="300" max="2000" step="100" value={preferences.budget_per_week}
-                      onChange={e => update('budget_per_week', Number(e.target.value))}
-                      className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-green-700" style={{ backgroundColor: 'var(--border)' }} />
+                      onChange={e=>update('budget_per_week',Number(e.target.value))}
+                      className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-green-700"
+                      style={{background:'var(--color-border)'}} />
                   )}
-                </div>
-
-                {/* Time */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Tillagningstid</label>
-                  <div className="flex gap-2 flex-wrap">
-                    {[['Alla',null],['≤30 min',{q:1}],['Blandning',{mix:1}],['≤45 min',{max:45}]].map(([l,v],i) => {
-                      const active = (!v&&tmMode==='none')||(v?.q&&preferences.max_cook_time===30&&!preferences.time_mix)||(v?.mix&&!!preferences.time_mix)||(v?.max&&preferences.max_cook_time===v.max)
-                      return <Pill key={i} active={active} onClick={() => setTimeMix(v)}>{l}</Pill>
-                    })}
-                  </div>
                 </div>
 
                 {/* Diet */}
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Kostval</label>
+                  <p className="text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Kostval</p>
                   <div className="flex gap-2 flex-wrap">
-                    {DIET_OPTIONS.map(o => <Pill key={o.value} active={preferences.dietary_restrictions.includes(o.value)} onClick={() => toggleList('dietary_restrictions',o.value)}>{o.label}</Pill>)}
+                    {DIETS.map(d => (
+                      <button key={d.v} onClick={()=>toggle('dietary_restrictions',d.v)}
+                        className={`btn-pill ${preferences.dietary_restrictions.includes(d.v)?'active':''}`}>{d.l}</button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Lifestyle */}
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Livsstil</label>
+                  <p className="text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Livsstil</p>
                   <div className="flex gap-2 flex-wrap">
-                    {LIFESTYLE_OPTIONS.map(o => <Pill key={o.value} active={(preferences.lifestyle_preferences||[]).includes(o.value)} onClick={() => toggleList('lifestyle_preferences',o.value)}>{o.label}</Pill>)}
+                    {LIFESTYLES.map(d => (
+                      <button key={d.v} onClick={()=>toggle('lifestyle_preferences',d.v)}
+                        className={`btn-pill ${(preferences.lifestyle_preferences||[]).includes(d.v)?'active':''}`}>{d.l}</button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Disliked */}
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Undvik</label>
-                  <div className="flex gap-1.5 flex-wrap mb-2">
-                    {COMMON_DISLIKES.map(i => <Pill key={i} active={preferences.disliked_ingredients.includes(i)} onClick={() => toggleList('disliked_ingredients',i)} variant="red">{i}</Pill>)}
+                  <p className="text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Undvik</p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {DISLIKES.map(d => (
+                      <button key={d} onClick={()=>toggle('disliked_ingredients',d)}
+                        className={`btn-pill text-xs ${preferences.disliked_ingredients.includes(d)?'active-red':''}`}>{d}</button>
+                    ))}
                   </div>
-                  <input type="text" placeholder="Övriga, kommaseparerat"
-                    value={preferences.disliked_ingredients.filter(d => !COMMON_DISLIKES.includes(d)).join(', ')}
-                    onChange={e => {
-                      const custom = e.target.value ? e.target.value.split(',').map(s => s.trim()).filter(Boolean) : []
-                      update('disliked_ingredients', [...preferences.disliked_ingredients.filter(d => COMMON_DISLIKES.includes(d)), ...custom])
-                    }}
-                    className="w-full px-3.5 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
-                    style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }} />
                 </div>
 
-                {/* Allergy disclaimer */}
                 {preferences.dietary_restrictions.length > 0 && (
-                  <p className="text-xs p-3 rounded-lg" style={{ backgroundColor: '#fffbeb', color: '#92400e' }}>
-                    Dubbelkolla alltid ingredienserna vid allergier eller särskild kost.
-                    Recepten filtreras automatiskt men fel kan förekomma.
+                  <p className="text-xs p-3 rounded-xl" style={{background:'#fffbeb',color:'#92400e'}}>
+                    Dubbelkolla alltid ingredienserna vid allergier. Recepten filtreras automatiskt men fel kan förekomma.
                   </p>
                 )}
               </div>
             )}
 
-            {/* CTA */}
-            <button onClick={onGenerate} disabled={loading}
-              className="w-full py-3.5 rounded-xl text-white font-semibold text-base disabled:opacity-50 transition-colors"
-              style={{ backgroundColor: 'var(--accent)' }}>
+            <button onClick={goToOffers} disabled={loading} className="btn btn-primary w-full">
               {loading ? 'Hämtar erbjudanden...' : 'Skapa min veckomeny'}
             </button>
           </div>
@@ -412,14 +257,14 @@ export default function PreferencesForm({ preferences, setPreferences, onGenerat
       )}
 
       {/* SEO */}
-      <section className="mt-12 space-y-6 text-sm" style={{ color: 'var(--text-muted)' }}>
+      <section className="mt-14 space-y-6 text-sm" style={{color:'var(--color-text-muted)'}}>
         <div>
-          <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text)' }}>Menyplanering som sparar pengar</h2>
-          <p className="leading-relaxed">Med Veckosmak får du en veckomeny baserad på erbjudanden från din lokala matbutik. Vår AI matchar recept mot kampanjer så du får maximalt med smak för pengarna.</p>
+          <h2 className="text-base font-bold mb-1" style={{color:'var(--color-text)'}}>Menyplanering som sparar pengar</h2>
+          <p>Med Veckosmak får du en veckomeny baserad på erbjudanden från din lokala matbutik. Vår AI matchar recept mot kampanjer.</p>
         </div>
         <div>
-          <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text)' }}>Så fungerar det</h2>
-          <p className="leading-relaxed">Varje vecka hämtar vi erbjudanden från ICA Maxi och matchar dem mot 600+ recept med betyg. Du får en skräddarsydd veckomeny med näringsinfo och inköpslista.</p>
+          <h2 className="text-base font-bold mb-1" style={{color:'var(--color-text)'}}>Så fungerar det</h2>
+          <p>Varje vecka hämtar vi erbjudanden från 1100+ ICA-butiker och matchar dem mot 600+ recept med betyg och näringsinfo.</p>
         </div>
       </section>
     </div>
