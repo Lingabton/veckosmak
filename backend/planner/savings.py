@@ -9,14 +9,42 @@ logger = logging.getLogger(__name__)
 
 # Default prices per category (kr per typical unit) when no offer/price is known
 DEFAULT_PRICES = {
-    "meat": 120.0,    # kr/kg
-    "fish": 160.0,    # kr/kg
-    "dairy": 25.0,    # kr/st
-    "produce": 20.0,  # kr/st
+    "meat": 130.0,    # kr/kg — average (färs/korv)
+    "fish": 180.0,    # kr/kg
+    "dairy": 30.0,    # kr/st
+    "produce": 25.0,  # kr/st
     "pantry": 20.0,   # kr/st
     "bakery": 30.0,   # kr/st
     "frozen": 35.0,   # kr/st
     "other": 25.0,    # kr/st
+}
+
+# Premium ingredients that cost much more than category average
+PREMIUM_PRICES = {
+    "oxfilé": 550.0,       # kr/kg
+    "entrecôte": 400.0,
+    "entrecote": 400.0,
+    "ryggbiff": 350.0,
+    "lammfilé": 400.0,
+    "lammstek": 300.0,
+    "lamm kotlett": 350.0,
+    "kalvfilé": 450.0,
+    "ankbröst": 350.0,
+    "viltfilé": 400.0,
+    "älgfilé": 400.0,
+    "laxfilé": 250.0,
+    "räkor": 300.0,
+    "räka": 300.0,
+    "pilgrimsmussla": 500.0,
+    "hummer": 600.0,
+    "sjötunga": 400.0,
+    "parmesan": 200.0,     # kr/kg
+    "parmesanost": 200.0,
+    "mozzarella": 120.0,
+    "gruyère": 250.0,
+    "saffran": 60.0,       # kr/st (per förpackning)
+    "tryffel": 200.0,
+    "pinjenötter": 200.0,  # kr/kg
 }
 
 # Approximate weight per unit for weight-based pricing
@@ -54,7 +82,7 @@ def estimate_ingredient_cost(
         amount = 1.0  # Default to 1 unit if no amount specified
 
     # Max reasonable cost per single ingredient for a family dinner
-    MAX_INGREDIENT_COST = 200.0
+    MAX_INGREDIENT_COST = 400.0
 
     if offer:
         offer_cost = min(_calculate_offer_cost(amount, ingredient.unit, offer), MAX_INGREDIENT_COST)
@@ -66,9 +94,14 @@ def estimate_ingredient_cost(
             regular_cost = offer_cost * 1.3
         return offer_cost, regular_cost
 
-    # No offer match — estimate based on category defaults
-    default_price = DEFAULT_PRICES.get(ingredient.category, 25.0)
-    cost = min(_estimate_default_cost(amount, ingredient.unit, default_price), MAX_INGREDIENT_COST)
+    # No offer match — check premium price first, then category default
+    name_lower = ingredient.name.lower()
+    price = DEFAULT_PRICES.get(ingredient.category, 25.0)
+    for premium_name, premium_price in PREMIUM_PRICES.items():
+        if premium_name in name_lower:
+            price = premium_price
+            break
+    cost = min(_estimate_default_cost(amount, ingredient.unit, price), MAX_INGREDIENT_COST)
     return cost, cost
 
 
