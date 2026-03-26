@@ -22,16 +22,17 @@ function normalize(s) {
     .replace(/é/g,'e').replace(/ü/g,'u')
 }
 
-function matchesSearch(city, query) {
+function matchesSearch(city, query, address = '') {
   if (!query) return true
   const q = normalize(query)
   const c = normalize(city)
-  // Direct match
-  if (c.includes(q)) return true
+  const a = normalize(address)
+  // Direct match in city or address
+  if (c.includes(q) || a.includes(q)) return true
   // Region alias match
   for (const [region, aliases] of Object.entries(REGION_ALIASES)) {
     if (region.includes(q) || normalize(region).includes(q)) {
-      if (aliases.some(a => c.includes(a))) return true
+      if (aliases.some(al => c.includes(al) || a.includes(al))) return true
     }
   }
   return false
@@ -53,7 +54,7 @@ function StoreSelector({ preferences, update }) {
   const currentName = currentStore?.city || 'Örebro Boglundsängen'
 
   const filtered = stores ? Object.entries(stores)
-    .filter(([_, s]) => matchesSearch(s.city, search))
+    .filter(([_, s]) => matchesSearch(s.city, search, s.address || ''))
     .sort((a, b) => a[1].city.localeCompare(b[1].city, 'sv'))
     : []
 
