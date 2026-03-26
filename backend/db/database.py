@@ -119,6 +119,12 @@ async def _pg_init():
                 preferences TEXT NOT NULL, menu_data TEXT NOT NULL,
                 total_cost REAL, total_savings REAL, created_at TIMESTAMP DEFAULT NOW()
             );
+            CREATE TABLE IF NOT EXISTS price_history (
+                id SERIAL PRIMARY KEY, store_id TEXT, product_name TEXT NOT NULL,
+                brand TEXT, category TEXT, offer_price REAL NOT NULL,
+                original_price REAL, unit TEXT, quantity_deal TEXT,
+                valid_from DATE, valid_to DATE, scraped_at TIMESTAMP DEFAULT NOW()
+            );
             CREATE TABLE IF NOT EXISTS feedback (
                 id SERIAL PRIMARY KEY, menu_id TEXT, day TEXT, action TEXT,
                 details TEXT, created_at TIMESTAMP DEFAULT NOW()
@@ -136,7 +142,37 @@ async def _pg_init():
 
 # --- Unified interface ---
 
+async def _save_price_history(offers: list[Offer]):
+    """Append all offers to price_history — never overwritten."""
+    if _is_postgres():
+        pool = await _pg_get_pool()
+        async with pool.acquire() as conn:
+            for o in offers:
+                await conn.execute("""
+                    INSERT INTO price_history (store_id, product_name, brand, category,
+                        offer_price, original_price, unit, quantity_deal, valid_from, valid_to)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                """, o.store_id, o.product_name, o.brand, o.category,
+                     o.offer_price, o.original_price, o.unit, o.quantity_deal,
+                     o.valid_from, o.valid_to)
+    else:
+        import aiosqlite
+        async with aiosqlite.connect(DB_PATH) as db:
+            for o in offers:
+                await db.execute(
+                    """INSERT INTO price_history (store_id, product_name, brand, category,
+                        offer_price, original_price, unit, quantity_deal, valid_from, valid_to)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (o.store_id, o.product_name, o.brand, o.category,
+                     o.offer_price, o.original_price, o.unit, o.quantity_deal,
+                     o.valid_from.isoformat(), o.valid_to.isoformat()))
+            await db.commit()
+    logger.info(f"Saved {len(offers)} entries to price_history")
+
+
 async def save_offers(offers: list[Offer]):
+    # Also save to permanent history
+    await _save_price_history(offers)
     if _is_postgres():
         pool = await _pg_get_pool()
         async with pool.acquire() as conn:

@@ -101,6 +101,26 @@ CREATE TABLE IF NOT EXISTS user_menus (
 
 CREATE INDEX IF NOT EXISTS idx_user_menus ON user_menus(user_id, year, week_number);
 
+-- Prishistorik — alla erbjudanden sparas, aldrig överskrivna
+CREATE TABLE IF NOT EXISTS price_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    store_id TEXT,
+    product_name TEXT NOT NULL,
+    brand TEXT,
+    category TEXT,
+    offer_price REAL NOT NULL,
+    original_price REAL,
+    unit TEXT,
+    quantity_deal TEXT,
+    valid_from DATE,
+    valid_to DATE,
+    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_price_history_product ON price_history(product_name, store_id);
+CREATE INDEX IF NOT EXISTS idx_price_history_date ON price_history(scraped_at);
+CREATE INDEX IF NOT EXISTS idx_price_history_category ON price_history(category, scraped_at);
+
 -- Feedback
 CREATE TABLE IF NOT EXISTS feedback (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
