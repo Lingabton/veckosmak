@@ -24,6 +24,7 @@ class WeeklyMenu(BaseModel):
     week_number: int
     year: int
     store_id: str
+    store_name: str = ""
     preferences: UserPreferences
     meals: list[PlannedMeal] = []
     shopping_list: ShoppingList = ShoppingList()

@@ -384,6 +384,12 @@ def _get_days(preferences: UserPreferences) -> list[str]:
     return remaining[:preferences.num_dinners]
 
 
+def _get_store_name(store_id: str) -> str:
+    from backend.scrapers.store_registry import STORE_REGISTRY
+    store = STORE_REGISTRY.get(store_id, {})
+    return store.get("name", store_id)
+
+
 def _get_servings_scale(recipe: Recipe, household_size: int) -> float:
     base = recipe.servings if recipe.servings and recipe.servings > 0 else 4
     return household_size / base
@@ -550,6 +556,7 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
         week_number=now.isocalendar()[1],
         year=now.year,
         store_id=preferences.store_id,
+        store_name=_get_store_name(preferences.store_id),
         preferences=preferences,
         meals=meals,
         shopping_list=shopping_list,

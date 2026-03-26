@@ -28,7 +28,7 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
       <div className="mb-5">
         <h1 className="text-2xl font-bold tracking-tight">Din veckomeny</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          {menu.date_range || `Vecka ${menu.week_number}`} — ICA Maxi Boglundsängen
+          {menu.date_range || `Vecka ${menu.week_number}`} — {menu.store_name || 'ICA'}
         </p>
         {/* Active filters (#11) */}
         {menu.active_filters && menu.active_filters.length > 0 && (
