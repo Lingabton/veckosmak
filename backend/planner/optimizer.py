@@ -219,10 +219,15 @@ def format_offers_for_prompt(offers: list[Offer], pinned_ids: list[str] = None) 
 
 
 def _score_recipe(recipe: Recipe, offer_matches: int) -> float:
-    """Combined score: offer matches + crowd rating bonus."""
+    """Combined score: offer matches + crowd rating weighted by review count."""
     score = offer_matches * 2.0
-    if recipe.rating and recipe.rating_count and recipe.rating_count >= 5:
-        score += recipe.rating * 0.5  # Bonus up to 2.5 for 5-star recipes
+    if recipe.rating and recipe.rating_count:
+        # Popular recipes with many reviews get big bonus
+        # 4.5★ with 500 reviews >> 4.5★ with 5 reviews
+        confidence = min(1.0, recipe.rating_count / 100)  # Caps at 100 reviews
+        score += recipe.rating * confidence  # Up to 5.0 bonus
+        if recipe.rating >= 4.0 and recipe.rating_count >= 50:
+            score += 2.0  # "Familjefavorit" bonus
     return score
 
 
@@ -314,22 +319,45 @@ def generate_fallback_menu(
     recipes: list[Recipe],
     preferences: UserPreferences,
 ) -> tuple[dict, bool]:
-    """Pick top recipes by offer match count — no AI needed.
+    """Pick top recipes by combined score with randomization.
     Returns (menu_data, is_fallback)."""
+    import random
     scored = []
     for r in recipes:
         matches = count_offer_matches(r.ingredients, offers)
-        scored.append((r, matches))
+        score = _score_recipe(r, matches)
+        scored.append((r, score))
     scored.sort(key=lambda x: -x[1])
+
+    # Take top 3x candidates and randomly pick from them for variety
+    pool_size = min(len(scored), preferences.num_dinners * 3)
+    pool = scored[:pool_size]
+    random.shuffle(pool)
 
     selected = []
     used_ids = set()
-    for r, _ in scored:
-        if r.id not in used_ids:
-            selected.append(r)
-            used_ids.add(r.id)
+    used_categories = []
+    for r, _ in pool:
+        if r.id in used_ids:
+            continue
+        # Avoid same main protein category twice in a row
+        main_cat = next((i.category for i in r.ingredients if i.category in ('meat','fish') and not i.is_pantry_staple), 'other')
+        if used_categories and used_categories[-1] == main_cat and main_cat != 'other':
+            continue
+        selected.append(r)
+        used_ids.add(r.id)
+        used_categories.append(main_cat)
         if len(selected) >= preferences.num_dinners:
             break
+
+    # If not enough after variety filter, fill from remaining
+    if len(selected) < preferences.num_dinners:
+        for r, _ in pool:
+            if r.id not in used_ids:
+                selected.append(r)
+                used_ids.add(r.id)
+            if len(selected) >= preferences.num_dinners:
+                break
 
     days = _get_days(preferences)
 
@@ -367,20 +395,9 @@ async def generate_menu(
     preferences: UserPreferences,
 ) -> WeeklyMenu:
     """Generate an optimized weekly menu using Claude."""
+    import random
     settings = get_settings()
-
-    # Check generation cache — same prefs + same week + same offers = same menu
     now = datetime.now()
-    cache_key = hashlib.md5(
-        f"{preferences.model_dump_json()}-{now.isocalendar()[1]}-{now.year}-{len(offers)}"
-        .encode()
-    ).hexdigest()
-
-    if cache_key in _menu_generation_cache:
-        cached = _menu_generation_cache[cache_key]
-        # Return a copy with new ID so swap tracking works independently
-        logger.info("Returning cached menu (same prefs + week)")
-        return cached.model_copy(update={"id": str(uuid.uuid4())[:8]})
 
     eligible = filter_recipes_by_preferences(recipes, preferences)
     if not eligible:
@@ -550,12 +567,6 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
         estimated_savings=estimated,
     )
 
-    # Cache the result
-    _menu_generation_cache[cache_key] = menu
-    if len(_menu_generation_cache) > _MENU_CACHE_MAX:
-        oldest_key = next(iter(_menu_generation_cache))
-        del _menu_generation_cache[oldest_key]
-
     return menu
 
 
@@ -565,25 +576,34 @@ async def swap_recipe(
     offers: list[Offer],
     recipes: list[Recipe],
     reason: str = "",
+    chosen_recipe_id: str = "",
 ) -> PlannedMeal:
-    """Swap out a recipe for a specific day."""
-    settings = get_settings()
-
+    """Swap out a recipe for a specific day.
+    If chosen_recipe_id is given, use that directly (user picked from alternatives).
+    Otherwise, ask AI for a suggestion.
+    """
     current_recipe_ids = {m.recipe.id for m in current_menu.meals}
     eligible = [r for r in recipes if r.id not in current_recipe_ids]
     eligible = filter_recipes_by_preferences(eligible, current_menu.preferences)
 
-    current_meal = next((m for m in current_menu.meals if m.day == day), None)
-    current_title = current_meal.recipe.title if current_meal else "okänt"
+    recipe_map = {r.id: r for r in eligible}
+    recipe = None
+    reasoning = ""
 
-    other_titles = [
-        m.recipe.title for m in current_menu.meals if m.day != day
-    ]
+    # If user chose a specific recipe from alternatives
+    if chosen_recipe_id and chosen_recipe_id in recipe_map:
+        recipe = recipe_map[chosen_recipe_id]
+        reasoning = "Vald av användaren"
+    else:
+        # Ask AI
+        current_meal = next((m for m in current_menu.meals if m.day == day), None)
+        current_title = current_meal.recipe.title if current_meal else "okänt"
+        other_titles = [m.recipe.title for m in current_menu.meals if m.day != day]
 
-    offers_text = format_offers_for_prompt(offers)
-    recipes_text = format_recipes_for_prompt(eligible, offers)
+        offers_text = format_offers_for_prompt(offers)
+        recipes_text = format_recipes_for_prompt(eligible, offers)
 
-    user_message = f"""Nuvarande recept på {day}: {current_title}
+        user_message = f"""Nuvarande recept på {day}: {current_title}
 Anledning till byte: {reason or 'Vill ha något annat'}
 Övriga rätter i menyn: {', '.join(other_titles)}
 
@@ -595,24 +615,26 @@ Tillgängliga recept:
 
 Föreslå ETT alternativt recept."""
 
-    ai_text = await call_ai(
-        system_prompt=SWAP_SYSTEM_PROMPT,
-        user_message=user_message,
-        max_tokens=300,
-        use_premium=False,  # Swaps are simple — use free tier
-    )
-    swap_data = parse_json_response(ai_text) if ai_text else {}
+        ai_text = await call_ai(
+            system_prompt=SWAP_SYSTEM_PROMPT,
+            user_message=user_message,
+            max_tokens=300,
+            use_premium=False,
+        )
+        swap_data = parse_json_response(ai_text) if ai_text else {}
 
-    recipe_id = swap_data.get("recipe_id", "")
-    reasoning = swap_data.get("reasoning", "")
-    recipe_map = {r.id: r for r in eligible}
-    recipe = recipe_map.get(recipe_id)
+        recipe_id = swap_data.get("recipe_id", "")
+        reasoning = swap_data.get("reasoning", "")
+        recipe = recipe_map.get(recipe_id)
 
     if not recipe:
-        scored = [(r, count_offer_matches(r.ingredients, offers)) for r in eligible]
+        import random
+        scored = [(r, _score_recipe(r, count_offer_matches(r.ingredients, offers))) for r in eligible]
         scored.sort(key=lambda x: -x[1])
-        recipe = scored[0][0] if scored else eligible[0]
-        reasoning = "Automatiskt vald baserat på erbjudanden"
+        pool = scored[:10]
+        random.shuffle(pool)
+        recipe = pool[0][0] if pool else eligible[0]
+        reasoning = "Automatiskt vald"
 
     servings_scale = _get_servings_scale(recipe, current_menu.preferences.household_size)
     cost_with, cost_without, matches = calculate_meal_cost(

@@ -158,7 +158,7 @@ export function useMenu() {
     }
   }, [preferences, setView])
 
-  const swapRecipe = useCallback(async (day, reason = '') => {
+  const swapRecipe = useCallback(async (day, reason = '', recipe_id = '') => {
     if (!menu) return
     setSwapping(day)
     setError(null)
@@ -166,7 +166,7 @@ export function useMenu() {
       const resp = await fetch('/api/menu/swap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ menu_id: menu.id, day, reason }),
+        body: JSON.stringify({ menu_id: menu.id, day, reason, recipe_id }),
       })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))

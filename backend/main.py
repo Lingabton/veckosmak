@@ -262,6 +262,67 @@ class SwapRequest(BaseModel):
     menu_id: str
     day: str
     reason: str = ""
+    recipe_id: str = ""  # If user chose a specific alternative
+
+
+@app.post("/api/menu/alternatives")
+async def get_swap_alternatives(req: SwapRequest):
+    """Return 5 alternative recipes for a day — user picks one."""
+    from backend.planner.optimizer import _score_recipe, _get_servings_scale, filter_recipes_by_preferences
+    from backend.planner.matcher import count_offer_matches
+    from backend.planner.savings import calculate_meal_cost
+    import random
+
+    menu = _menu_cache.get(req.menu_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menyn hittades inte.")
+
+    raw_offers = await get_current_offers(menu.store_id)
+    raw_recipes = await get_all_recipes()
+    offers = [_db_offer_to_model(o) for o in raw_offers]
+    recipes = [_db_recipe_to_model(r) for r in raw_recipes]
+
+    current_ids = {m.recipe.id for m in menu.meals}
+    eligible = [r for r in recipes if r.id not in current_ids]
+    eligible = filter_recipes_by_preferences(eligible, menu.preferences)
+
+    # Score and pick top candidates with some randomization
+    scored = []
+    for r in eligible:
+        matches = count_offer_matches(r.ingredients, offers)
+        score = _score_recipe(r, matches)
+        scored.append((r, matches, score))
+    scored.sort(key=lambda x: -x[2])
+
+    # Take top 15, shuffle, pick 5
+    pool = scored[:15]
+    random.shuffle(pool)
+    candidates = pool[:5]
+    # Re-sort by score for display
+    candidates.sort(key=lambda x: -x[2])
+
+    results = []
+    for recipe, matches, score in candidates:
+        scale = _get_servings_scale(recipe, menu.preferences.household_size)
+        cost_w, cost_wo, _ = calculate_meal_cost(recipe.ingredients, offers, scale)
+        pp = round(cost_w / menu.preferences.household_size) if menu.preferences.household_size > 0 else 0
+        is_favorite = recipe.rating and recipe.rating >= 4.0 and (recipe.rating_count or 0) >= 50
+        results.append({
+            "recipe_id": recipe.id,
+            "title": recipe.title,
+            "cook_time_minutes": recipe.cook_time_minutes,
+            "difficulty": recipe.difficulty,
+            "rating": recipe.rating,
+            "rating_count": recipe.rating_count,
+            "estimated_cost": round(cost_w, 2),
+            "price_per_portion": pp,
+            "offer_matches": matches,
+            "image_url": recipe.image_url,
+            "is_favorite": is_favorite,
+            "tags": recipe.tags,
+        })
+
+    return {"alternatives": results}
 
 
 @app.post("/api/menu/swap")
@@ -282,7 +343,7 @@ async def swap_menu_recipe(req: SwapRequest):
     recipes = [_db_recipe_to_model(r) for r in raw_recipes]
 
     try:
-        new_meal = await swap_recipe(menu, req.day, offers, recipes, req.reason)
+        new_meal = await swap_recipe(menu, req.day, offers, recipes, req.reason, req.recipe_id)
     except Exception as e:
         logger.error(f"Swap failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Kunde inte byta recept just nu. Försök igen.")

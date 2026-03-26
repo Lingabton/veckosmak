@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 
 const DAY_NAMES = {
   monday: 'Måndag', tuesday: 'Tisdag', wednesday: 'Onsdag',
@@ -24,7 +24,27 @@ function Stars({ score }) {
 export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceExpand, index }) {
   const [expanded, setExpanded] = useState(false)
   const [feedback, setFeedback] = useState(null)
+  const [alternatives, setAlternatives] = useState(null)
+  const [loadingAlts, setLoadingAlts] = useState(false)
   const { day, recipe, estimated_cost, estimated_cost_without_offers, offer_matches, scaled_servings, reasoning, popularity_score, mealprep_tip } = meal
+
+  const fetchAlternatives = useCallback(async () => {
+    if (alternatives) { setAlternatives(null); return }
+    setLoadingAlts(true)
+    try {
+      const menuId = meal._menuId || ''
+      const resp = await fetch('/api/menu/alternatives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ menu_id: menuId, day }),
+      })
+      if (resp.ok) {
+        const data = await resp.json()
+        setAlternatives(data.alternatives || [])
+      }
+    } catch {}
+    setLoadingAlts(false)
+  }, [day, alternatives, meal._menuId])
   const savings = estimated_cost_without_offers - estimated_cost
   const pricePerPortion = scaled_servings > 0 ? Math.round(estimated_cost / scaled_servings) : 0
   const scale = scaled_servings / (recipe.servings || 4)
@@ -148,22 +168,63 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
               </a>
             )}
 
-            {/* Feedback */}
-            <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-light)' }}>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Vad tycker du?</span>
-              {['liked', 'disliked'].map(action => (
-                <button key={action} onClick={(e) => { e.stopPropagation(); setFeedback(action); onFeedback?.(day, action) }}
-                  className={`w-10 h-10 rounded-full border text-sm transition-all ${
-                    feedback === action ? 'scale-110 shadow-sm' : ''
-                  }`}
-                  style={{
-                    borderColor: feedback === action ? (action === 'liked' ? 'var(--green)' : '#ef4444') : 'var(--border)',
-                    backgroundColor: feedback === action ? (action === 'liked' ? 'var(--green-soft)' : '#fef2f2') : 'transparent',
-                  }}>
-                  {action === 'liked' ? '↑' : '↓'}
-                </button>
-              ))}
-              {feedback && <span className="text-xs" style={{ color: 'var(--green)' }}>Tack!</span>}
+            {/* Feedback + Alternatives */}
+            <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-light)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Betyg:</span>
+                {['liked', 'disliked'].map(action => (
+                  <button key={action} onClick={(e) => { e.stopPropagation(); setFeedback(action); onFeedback?.(day, action) }}
+                    className={`w-9 h-9 rounded-full border text-sm transition-all ${feedback === action ? 'scale-110 shadow-sm' : ''}`}
+                    style={{
+                      borderColor: feedback === action ? (action === 'liked' ? 'var(--green)' : '#ef4444') : 'var(--border)',
+                      backgroundColor: feedback === action ? (action === 'liked' ? 'var(--green-soft)' : '#fef2f2') : 'transparent',
+                    }}>
+                    {action === 'liked' ? '↑' : '↓'}
+                  </button>
+                ))}
+                {feedback && <span className="text-xs" style={{ color: 'var(--green)' }}>Tack!</span>}
+              </div>
+
+              {/* Show alternatives */}
+              <button onClick={(e) => { e.stopPropagation(); fetchAlternatives() }}
+                disabled={loadingAlts}
+                className="w-full py-2 text-sm border rounded-lg transition-colors"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+                {loadingAlts ? 'Hämtar alternativ...' : alternatives ? 'Dölj alternativ' : 'Visa alternativ'}
+              </button>
+
+              {alternatives && alternatives.length > 0 && (
+                <div className="mt-3 space-y-2 animate-expand">
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Välj ett alternativ:</p>
+                  {alternatives.map(alt => (
+                    <button key={alt.recipe_id}
+                      onClick={(e) => { e.stopPropagation(); onSwap(day, '', alt.recipe_id) }}
+                      disabled={swapping === day}
+                      className="w-full text-left p-3 rounded-xl border transition-all hover:shadow-sm"
+                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{alt.title}</span>
+                            {alt.is_favorite && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full"
+                                style={{ backgroundColor: '#fef3c7', color: '#92400e' }}>Favorit</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {alt.rating && <span className="text-amber-400">{'★'.repeat(Math.round(alt.rating))} {alt.rating}</span>}
+                            <span>{alt.cook_time_minutes} min</span>
+                            {alt.offer_matches > 0 && <span style={{ color: 'var(--green)' }}>{alt.offer_matches} erbjudanden</span>}
+                          </div>
+                        </div>
+                        <span className="font-bold text-sm shrink-0" style={{ color: 'var(--accent)' }}>
+                          {alt.price_per_portion} kr/port
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
