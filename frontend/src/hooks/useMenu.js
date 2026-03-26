@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 
 const STORAGE_KEY = 'veckosmak_preferences'
 const CHECKED_KEY = 'veckosmak_checked'
+const MENU_KEY = 'veckosmak_menu'
 
 const DEFAULT_PREFS = {
   household_size: 4,
@@ -62,20 +63,47 @@ export function saveChecked(checked) {
 
 export function useMenu() {
   const [preferences, setPreferencesState] = useState(loadPreferences)
-  const [menu, setMenu] = useState(null)
   const [topOffers, setTopOffers] = useState([])
   const [loading, setLoading] = useState(false)
   const [loadingOffers, setLoadingOffers] = useState(false)
   const [swapping, setSwapping] = useState(null)
   const [error, setError] = useState(null)
-  // Clear stale errors on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setError(null) }, [])
-  const [view, setViewState] = useState('preferences')
   const [copySuccess, setCopySuccess] = useState(false)
   const [expandAll, setExpandAll] = useState(false)
   const [isReturning] = useState(() => !!localStorage.getItem(STORAGE_KEY))
   const [bonusOffers, setBonusOffers] = useState([])
+
+  // Load saved menu from localStorage
+  const [menu, setMenuState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(MENU_KEY)
+      return saved ? JSON.parse(saved) : null
+    } catch { return null }
+  })
+  const [hasSavedMenu] = useState(() => !!localStorage.getItem(MENU_KEY))
+
+  // Determine initial view — show menu if we have one saved
+  const [view, setViewState] = useState(() => {
+    const hash = getViewFromHash()
+    if (hash !== 'preferences') return hash
+    try {
+      const saved = localStorage.getItem(MENU_KEY)
+      if (saved) return 'menu'
+    } catch {}
+    return 'preferences'
+  })
+
+  // Wrap setMenu to also save to localStorage
+  const setMenu = useCallback((menuOrFn) => {
+    setMenuState(prev => {
+      const next = typeof menuOrFn === 'function' ? menuOrFn(prev) : menuOrFn
+      if (next) {
+        try { localStorage.setItem(MENU_KEY, JSON.stringify(next)) } catch {}
+      }
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     const handlePop = () => {

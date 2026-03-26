@@ -54,6 +54,7 @@ function App() {
               preferences={preferences} setPreferences={setPreferences}
               goToOffers={goToOffers} generateMenu={generateMenu}
               loading={loading} isReturning={isReturning}
+              menu={menu} setView={setView}
             />
           ) : view === 'offers' ? (
             <TopOffers

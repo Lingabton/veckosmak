@@ -93,7 +93,7 @@ function StoreSelector({ preferences, update }) {
   )
 }
 
-export default function PreferencesForm({ preferences, setPreferences, goToOffers, generateMenu, loading, isReturning }) {
+export default function PreferencesForm({ preferences, setPreferences, goToOffers, generateMenu, loading, isReturning, menu, setView }) {
   const [showMore, setShowMore] = useState(false)
   const update = (k,v) => setPreferences({...preferences, [k]: v})
   const toggle = (k,v) => { const c = preferences[k]||[]; update(k, c.includes(v)?c.filter(d=>d!==v):[...c,v]) }
@@ -144,8 +144,26 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
         </div>
       )}
 
+      {/* Saved menu shortcut */}
+      {menu && (
+        <div className="card p-5 mb-6 fade-in">
+          <p className="font-bold mb-1">Du har en sparad meny</p>
+          <p className="text-sm mb-3" style={{color:'var(--color-text-muted)'}}>
+            {menu.store_name || 'ICA'} · {menu.meals?.length} middagar · {menu.date_range || `Vecka ${menu.week_number}`}
+          </p>
+          <div className="flex gap-2">
+            <button onClick={() => setView('shopping')} className="btn btn-primary flex-1 py-3">
+              Inköpslista
+            </button>
+            <button onClick={() => setView('menu')} className="btn btn-secondary flex-1 py-3">
+              Visa meny
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Returning user shortcut */}
-      {isReturning && (
+      {isReturning && !menu && (
         <div className="mb-6 fade-in">
           <button onClick={generateMenu} disabled={loading} className="btn btn-primary w-full text-lg py-4">
             Skapa veckans meny

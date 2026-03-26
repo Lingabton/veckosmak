@@ -97,24 +97,38 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
         </div>
       )}
 
-      {/* Regenerate with confirm (#58) */}
-      <div className="mt-8 text-center">
+      {/* Next step — clear CTA */}
+      <div className="card p-5 mt-8 text-center">
+        <p className="font-bold text-base mb-1">Nöjd med menyn?</p>
+        <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
+          Inköpslistan är redo — öppna den i butiken och bocka av.
+        </p>
+        <button onClick={onShowShopping} className="btn btn-primary w-full mb-3">
+          Visa inköpslista
+        </button>
+        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          Din meny och inköpslista sparas automatiskt — du kan stänga appen och öppna den igen i butiken.
+        </p>
+      </div>
+
+      {/* Regenerate */}
+      <div className="mt-6 text-center">
         {confirmRegenerate ? (
-          <div className="animate-fade-in">
-            <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>Nuvarande meny försvinner. Fortsätta?</p>
+          <div className="fade-in">
+            <p className="text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>Nuvarande meny försvinner. Fortsätta?</p>
             <div className="flex justify-center gap-3">
               <button onClick={handleRegenerate}
-                className="text-sm font-medium px-4 py-1.5 rounded-full text-white" style={{ backgroundColor: 'var(--accent)' }}>
+                className="btn btn-primary text-sm px-5 py-2">
                 Ja, generera ny
               </button>
               <button onClick={() => setConfirmRegenerate(false)}
-                className="text-sm px-4 py-1.5 rounded-full border" style={{ borderColor: 'var(--border)' }}>
+                className="btn btn-secondary text-sm px-5 py-2">
                 Avbryt
               </button>
             </div>
           </div>
         ) : (
-          <button onClick={handleRegenerate} className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          <button onClick={handleRegenerate} className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
             Generera ny meny
           </button>
         )}
