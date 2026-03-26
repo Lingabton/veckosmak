@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* Tailwind v4 theme extensions */
+@theme {
+  --color-brand: #1a5c35;
+  --color-brand-light: #e8f5ec;
+  --color-brand-deep: #1a5c35;
+  --color-accent: #d4603a;
+  --color-accent-hover: #be5231;
+  --color-accent-light: #fdf0ec;
+  --color-surface: #ffffff;
+  --color-muted: #737981;
+  --color-border: #e8e5e0;
+  --color-border-light: #f0ede8;
+}
+
 :root {
   --bg: #faf8f5;
   --surface: #ffffff;
