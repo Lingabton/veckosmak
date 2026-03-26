@@ -135,14 +135,25 @@ INCOMPLETE_RECIPE_KEYWORDS = [
 ]
 
 
+CARB_SOURCES = [
+    "potatis", "ris", "pasta", "spaghetti", "penne", "bulgur", "couscous",
+    "bröd", "tortilla", "wrap", "nudlar", "gnocchi", "polenta", "quinoa",
+    "tacos", "pizza", "pie", "paj", "gratäng", "lasagne", "risotto",
+]
+
 def _is_incomplete_recipe(recipe: Recipe) -> bool:
     """Check if a recipe is just a component, not a full dinner."""
     title_lower = recipe.title.lower()
     if any(kw in title_lower for kw in INCOMPLETE_RECIPE_KEYWORDS):
         return True
-    # Too few non-pantry ingredients = probably not a full meal
     real_ingredients = [i for i in recipe.ingredients if not i.is_pantry_staple]
     if len(real_ingredients) < 3:
+        return True
+    # Check if it has a carb source or is self-contained (soup, stew, salad)
+    all_text = f"{title_lower} {' '.join(i.name.lower() for i in recipe.ingredients)}"
+    has_carb = any(c in all_text for c in CARB_SOURCES)
+    is_selfcontained = any(kw in title_lower for kw in ['soppa', 'gryta', 'wok', 'sallad', 'bowl', 'burrito', 'kebab', 'pannkak', 'omelett', 'paj', 'gratäng', 'lasagne', 'risotto', 'curry'])
+    if not has_carb and not is_selfcontained and len(real_ingredients) < 6:
         return True
     return False
 
