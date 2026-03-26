@@ -113,7 +113,6 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
               </div>
             )}
 
-            {side_suggestion && <p className="text-xs p-3 rounded-xl mb-2" style={{background:'#fefce8',color:'#854d0e'}}><b>Servera med:</b> {side_suggestion}</p>}
             {mealprep_tip && <p className="text-xs p-3 rounded-xl mb-3" style={{background:'#f0f9ff',color:'#0369a1'}}><b>Tips:</b> {mealprep_tip}</p>}
 
             {offer_matches?.length > 0 && (
