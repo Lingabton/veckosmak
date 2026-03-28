@@ -25,6 +25,8 @@ CATEGORY_KEYWORDS = {
         "kyckling", "fläsk", "nöt", "färs", "korv", "bacon", "skinka",
         "lamm", "kalkon", "kebab", "köttbull", "entrecote", "karré",
         "schnitzel", "grillkorv", "falukorv", "kassler", "chorizo",
+        "oxfilé", "ryggbiff", "innanlår", "rostbiff", "tjock", "bog",
+        "revben", "pulled", "biff", "kotlett", "lövbiff", "fläskfilé",
     ],
     "fish": [
         "lax", "torsk", "sej", "fisk", "räk", "tonfisk", "sill",
