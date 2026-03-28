@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt pytest
+        run: pip install -r backend/requirements.txt pytest pytest-asyncio
       - name: Run tests
         run: python -m pytest backend/tests/ -v
 
