@@ -31,7 +31,7 @@ function App() {
           <div className="flex items-center gap-2">
             {menu && (
               <nav className="flex gap-1">
-                {[['menu', 'Meny'], ['shopping', 'Inköpslista']].map(([v, label]) => (
+                {[['preferences', 'Ny meny'], ['menu', 'Meny'], ['shopping', 'Inköpslista']].map(([v, label]) => (
                   <button key={v} onClick={() => setView(v)}
                     className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                       view === v ? 'bg-white/20 text-white' : 'text-green-200 hover:text-white'

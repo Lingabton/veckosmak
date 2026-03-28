@@ -16,8 +16,9 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
   return (
     <section className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <button onClick={onBack} className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Ändra inställningar
+        <button onClick={onBack} className="text-sm font-medium px-3 py-1.5 rounded-full"
+          style={{ color: 'var(--color-brand-dark)', border: '1px solid var(--color-brand-dark)' }}>
+          ← Ny meny
         </button>
         <button onClick={onShowShopping}
           className="text-sm font-medium px-4 py-1.5 rounded-full text-white"
