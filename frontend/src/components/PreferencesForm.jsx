@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import EmailSignup from './EmailSignup'
 
 const DIETS = [
   {v:'vegetarian',l:'Vegetarisk'},{v:'vegan',l:'Vegansk'},{v:'glutenfree',l:'Glutenfri'},
@@ -51,7 +52,7 @@ function StoreSelector({ preferences, update }) {
         <div className="card mt-2 overflow-hidden expand">
           <input type="text" placeholder="Sök stad..." value={search} onChange={e=>setSearch(e.target.value)} autoFocus
             className="w-full px-4 py-3 text-sm border-b outline-none" style={{borderColor:'var(--color-border-light)',background:'var(--color-bg)'}} />
-          <div className="max-h-64 overflow-y-auto">
+          <div className="max-h-[60vh] overflow-y-auto">
             {!stores && <p className="px-4 py-3 text-xs" style={{color:'var(--color-text-muted)'}}>Laddar butiker...</p>}
             {stores && !search && <p className="px-4 py-2 text-xs" style={{color:'var(--color-text-muted)'}}>1100+ butiker — sök din stad</p>}
             {filtered.slice(0,25).map(([id,s])=>(
@@ -74,7 +75,7 @@ function StoreSelector({ preferences, update }) {
 function ProductPreview() {
   return (
     <div className="card p-5 mb-8">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Menu preview */}
         <div>
           <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color:'var(--color-brand)'}}>Din veckomeny</p>
@@ -285,6 +286,9 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
           1100+ ICA-butiker · 600+ recept med betyg · Helt gratis
         </p>
       </section>
+
+      {/* Email signup */}
+      <EmailSignup context="home" />
 
       {/* SEO */}
       <section className="space-y-4 text-sm" style={{color:'var(--color-text-muted)'}}>

@@ -15,6 +15,7 @@ from backend.models.recipe import Ingredient, Nutrition, Recipe
 from backend.models.user_prefs import UserPreferences
 from backend.planner.optimizer import generate_menu, swap_recipe
 from backend.scrapers.ica_maxi import IcaMaxiScraper
+from backend.scrapers.factory import get_scraper_for_store, get_all_store_registries
 
 logging.basicConfig(
     level=logging.INFO,
@@ -157,7 +158,7 @@ async def cron_scrape(key: str = ""):
             logger.warning(f"ALERT: Only {len(offers)} offers — unusually low")
         return {"status": "ok", "scraped": len(offers)}
 
-    logger.warning("Cron: 0 offers found")
+    logger.error("[ALERT] Cron: 0 offers found — scraper may be broken or site changed")
     return {"status": "warning", "scraped": 0}
 
 
@@ -200,13 +201,14 @@ async def cron_scrape_all(key: str = "", types: str = "", batch_size: int = 20):
     type_label = types or "all"
 
     async def scrape_background():
-        scraper = IcaMaxiScraper()
+        from backend.scrapers.factory import get_scraper_for_store as _get_scraper
         _scrape_all_status.update({"running": True, "progress": 0, "total": len(store_ids), "scraped": 0, "failed": 0, "types": type_label})
 
         for i in range(0, len(store_ids), batch_size):
             batch = store_ids[i:i + batch_size]
             for store_id in batch:
                 try:
+                    scraper = _get_scraper(store_id)
                     offers = await scraper.fetch_offers(store_id)
                     if offers:
                         await save_offers(offers)
@@ -240,7 +242,7 @@ async def list_offers(store_id: str = "ica-maxi-1004097", category: str | None =
 
 @app.post("/api/offers/scrape")
 async def scrape_offers(store_id: str = "ica-maxi-1004097"):
-    scraper = IcaMaxiScraper()
+    scraper = get_scraper_for_store(store_id)
     try:
         offers = await scraper.fetch_offers(store_id)
     except Exception as e:
@@ -281,13 +283,12 @@ async def list_recipes(tags: str | None = None, diet: str | None = None, max_tim
 
 
 @app.post("/api/menu/generate")
-async def generate_weekly_menu(preferences: UserPreferences, request: Request):
+async def generate_weekly_menu(preferences: UserPreferences, request: Request, email: str = ""):
     from backend.analytics import log_preference, log_generation, update_recipe_stats
     _check_rate_limit(request.client.host)
 
     raw_offers = await get_current_offers(preferences.store_id)
-    if not raw_offers:
-        raise HTTPException(status_code=404, detail="Inga erbjudanden hittades för denna butik just nu. Veckans erbjudanden kanske inte har laddats ännu.")
+    offers_stale = any(o.get("_stale") for o in raw_offers) if raw_offers else False
 
     raw_recipes = await get_all_recipes()
     if not raw_recipes:
@@ -325,6 +326,20 @@ async def generate_weekly_menu(preferences: UserPreferences, request: Request):
             await update_recipe_stats(meal.recipe.id, 'selected')
     except Exception:
         pass
+
+    # Save menu to user history if logged in
+    if email:
+        try:
+            from backend.auth import save_user_menu
+            await save_user_menu(email, menu.model_dump())
+        except Exception:
+            pass
+
+    # Add staleness/no-offers info to response
+    if offers_stale:
+        menu.offers_note = "Erbjudandena kan vara utgångna — vi visar de senaste vi har."
+    elif not raw_offers:
+        menu.offers_note = "Inga erbjudanden hittades — menyn är baserad på våra bästa recept."
 
     return menu
 
@@ -509,14 +524,16 @@ class LoginRequest(BaseModel):
 
 @app.post("/api/auth/login")
 async def login(req: LoginRequest):
-    """Request a magic link. In production, sends email. For now, returns token directly."""
+    """Request a magic link. Sends email in production, returns token in dev."""
     from backend.auth import create_magic_link
+    from backend.email_sender import send_magic_link_email
     token = await create_magic_link(req.email)
-    # TODO: Send email with link https://veckosmak.vercel.app/auth?token=xxx
-    # For now, return token directly (dev mode)
-    login_url = f"{settings.frontend_url}#auth={token}"
-    logger.info(f"Magic link for {req.email}: {login_url}")
-    return {"status": "ok", "message": "Inloggningslänk skickad till din e-post", "token": token}
+    email_sent = await send_magic_link_email(req.email, token)
+    response = {"status": "ok", "message": "Inloggningslänk skickad till din e-post"}
+    # In development (no email sent), include token for easy testing
+    if not email_sent:
+        response["token"] = token
+    return response
 
 
 @app.get("/api/auth/verify")
@@ -659,5 +676,311 @@ async def bonus_offers(menu_id: str = "", store_id: str = "ica-maxi-1004097"):
 
 @app.get("/api/stores")
 async def list_stores():
-    from backend.scrapers.store_registry import STORE_REGISTRY
-    return {"stores": STORE_REGISTRY}
+    return {"stores": get_all_store_registries()}
+
+
+# --- User profile & account endpoints ---
+
+class ProfileUpdateRequest(BaseModel):
+    name: str = ""
+    bio: str = ""
+    city: str = ""
+    is_public: bool = False
+
+
+@app.post("/api/user/profile")
+async def update_profile(req: ProfileUpdateRequest, email: str = ""):
+    """Update user profile (name, bio, city, public visibility)."""
+    if not email:
+        raise HTTPException(status_code=401, detail="Inte inloggad")
+    from backend.auth import update_user_profile
+    await update_user_profile(email, name=req.name or None, bio=req.bio or None,
+                               city=req.city or None, is_public=req.is_public)
+    return {"status": "ok"}
+
+
+@app.get("/api/user/profile")
+async def get_profile(email: str = ""):
+    """Get user profile and subscription info."""
+    if not email:
+        raise HTTPException(status_code=401, detail="Inte inloggad")
+    from backend.auth import get_user
+    user = await get_user(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="Användare hittades inte")
+    return {
+        "user": {
+            "email": user["email"],
+            "name": user.get("name"),
+            "bio": user.get("bio"),
+            "city": user.get("city"),
+            "is_public": user.get("is_public", False),
+            "created_at": user.get("created_at"),
+        },
+    }
+
+
+@app.get("/api/user/menus")
+async def get_user_menus(email: str = "", limit: int = 20):
+    """Get user's menu history."""
+    if not email:
+        raise HTTPException(status_code=401, detail="Inte inloggad")
+    from backend.auth import get_user_menu_history
+    menus = await get_user_menu_history(email, limit)
+    return {"menus": menus}
+
+
+
+# --- Price poll & email signup (launch validation) ---
+
+class PricePollRequest(BaseModel):
+    menu_id: str
+    answer: str  # "0", "29", "49", "79"
+
+@app.post("/api/poll/price")
+async def submit_price_poll(req: PricePollRequest):
+    """Save a price willingness-to-pay response."""
+    import aiosqlite
+    from backend.db.database import DB_PATH
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO price_poll (menu_id, answer) VALUES (?, ?)",
+            (req.menu_id, req.answer)
+        )
+        await db.commit()
+    logger.info(f"Price poll: menu={req.menu_id} answer={req.answer}")
+    return {"status": "ok"}
+
+
+class EmailSignupRequest(BaseModel):
+    email: str
+
+@app.post("/api/signup/email")
+async def email_signup(req: EmailSignupRequest):
+    """Save an email for weekly menu delivery."""
+    import aiosqlite
+    from backend.db.database import DB_PATH
+    email = req.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Ogiltig e-postadress")
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO email_signups (email) VALUES (?)",
+            (email,)
+        )
+        await db.commit()
+    logger.info(f"Email signup: {email}")
+    return {"status": "ok"}
+
+
+# --- PDF export endpoints ---
+
+@app.get("/api/export/shopping-list/{menu_id}")
+async def export_shopping_list_pdf(menu_id: str):
+    """Download shopping list as PDF."""
+    from fastapi.responses import Response
+    menu = _menu_cache.get(menu_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menyn hittades inte")
+    try:
+        from backend.pdf_export import generate_shopping_list_pdf
+        pdf_bytes = generate_shopping_list_pdf(menu.model_dump())
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="inkopslista-v{menu.week_number}.pdf"'}
+        )
+    except ImportError:
+        raise HTTPException(status_code=501, detail="PDF-export inte tillgängligt — installera reportlab")
+
+
+@app.get("/api/export/menu/{menu_id}")
+async def export_menu_pdf(menu_id: str):
+    """Download full menu + shopping list as PDF."""
+    from fastapi.responses import Response
+    menu = _menu_cache.get(menu_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menyn hittades inte")
+    try:
+        from backend.pdf_export import generate_menu_pdf
+        pdf_bytes = generate_menu_pdf(menu.model_dump())
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="veckomeny-v{menu.week_number}.pdf"'}
+        )
+    except ImportError:
+        raise HTTPException(status_code=501, detail="PDF-export inte tillgängligt — installera reportlab")
+
+
+# --- ICA cart integration ---
+
+@app.get("/api/cart/ica")
+async def ica_cart_link(menu_id: str = ""):
+    """Get ICA Handla deep link for the shopping list."""
+    from backend.ica_cart import build_cart_url, match_shopping_list_to_ica
+    menu = _menu_cache.get(menu_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menyn hittades inte")
+
+    items = [item.model_dump() if hasattr(item, 'model_dump') else item
+             for item in menu.shopping_list.items]
+    cart_url = build_cart_url(items, menu.store_id)
+    # Try to match items to ICA products (non-blocking, best-effort)
+    try:
+        enriched = await match_shopping_list_to_ica(items[:10], menu.store_id)
+    except Exception:
+        enriched = []
+
+    return {
+        "cart_url": cart_url,
+        "matched_items": enriched,
+        "store_id": menu.store_id,
+    }
+
+
+# --- Community endpoints ---
+
+class ShareMenuRequest(BaseModel):
+    menu_id: str
+    title: str = ""
+    description: str = ""
+    email: str = ""
+
+
+@app.post("/api/community/share")
+async def share_menu(req: ShareMenuRequest):
+    """Share a menu with the community."""
+    if not req.email:
+        raise HTTPException(status_code=401, detail="Du måste vara inloggad för att dela")
+    from backend.auth import get_user
+    user = await get_user(req.email)
+    if not user:
+        raise HTTPException(status_code=401, detail="Användare hittades inte")
+
+    menu = _menu_cache.get(req.menu_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menyn hittades inte")
+
+    from backend.community import share_menu as do_share
+    title = req.title or f"Veckomeny v{menu.week_number}"
+    dietary_tags = menu.active_filters if menu.active_filters else []
+
+    shared_id = await do_share(
+        user_id=user["id"],
+        title=title,
+        description=req.description,
+        menu_data=menu.model_dump(),
+        store_name=menu.store_name,
+        city=user.get("city", ""),
+        total_cost=menu.total_cost,
+        total_savings=menu.total_savings,
+        num_meals=len(menu.meals),
+        dietary_tags=dietary_tags,
+    )
+    return {"status": "ok", "shared_id": shared_id}
+
+
+@app.get("/api/community/menus")
+async def community_menus(sort: str = "popular", city: str = "", limit: int = 10):
+    """Browse shared menus."""
+    from backend.community import get_popular_menus, get_recent_menus
+    if sort == "recent":
+        menus = await get_recent_menus(limit, city or None)
+    else:
+        menus = await get_popular_menus(limit, city or None)
+    return {"menus": menus}
+
+
+@app.get("/api/community/menu/{menu_id}")
+async def get_shared_menu(menu_id: str):
+    """Get a specific shared menu."""
+    from backend.community import get_shared_menu as get_menu
+    menu = await get_menu(menu_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Delad meny hittades inte")
+    return menu
+
+
+class LikeRequest(BaseModel):
+    email: str
+
+
+@app.post("/api/community/menu/{menu_id}/like")
+async def like_menu(menu_id: str, req: LikeRequest):
+    """Like or unlike a shared menu."""
+    if not req.email:
+        raise HTTPException(status_code=401, detail="Inte inloggad")
+    from backend.auth import get_user
+    from backend.community import toggle_like
+    user = await get_user(req.email)
+    if not user:
+        raise HTTPException(status_code=401, detail="Användare hittades inte")
+    result = await toggle_like(user["id"], menu_id)
+    return result
+
+
+class RateRequest(BaseModel):
+    email: str
+    rating: int  # 1-5
+    comment: str = ""
+
+
+@app.post("/api/recipes/{recipe_id}/rate")
+async def rate_recipe(recipe_id: str, req: RateRequest):
+    """Rate a recipe 1-5."""
+    if not req.email:
+        raise HTTPException(status_code=401, detail="Inte inloggad")
+    if not 1 <= req.rating <= 5:
+        raise HTTPException(status_code=400, detail="Betyg måste vara 1-5")
+    from backend.auth import get_user
+    from backend.community import rate_recipe as do_rate
+    user = await get_user(req.email)
+    if not user:
+        raise HTTPException(status_code=401, detail="Användare hittades inte")
+    await do_rate(user["id"], recipe_id, req.rating, req.comment or None)
+    return {"status": "ok"}
+
+
+@app.get("/api/recipes/{recipe_id}/ratings")
+async def get_recipe_ratings(recipe_id: str):
+    """Get ratings for a recipe."""
+    from backend.community import get_recipe_ratings as get_ratings
+    return await get_ratings(recipe_id)
+
+
+@app.post("/api/recipes/{recipe_id}/favorite")
+async def toggle_favorite(recipe_id: str, req: LikeRequest):
+    """Toggle recipe as favorite."""
+    if not req.email:
+        raise HTTPException(status_code=401, detail="Inte inloggad")
+    from backend.auth import get_user
+    from backend.community import toggle_favorite as do_toggle
+    user = await get_user(req.email)
+    if not user:
+        raise HTTPException(status_code=401, detail="Användare hittades inte")
+    is_fav = await do_toggle(user["id"], recipe_id)
+    return {"status": "ok", "is_favorite": is_fav}
+
+
+@app.get("/api/user/favorites")
+async def get_favorites(email: str = ""):
+    """Get user's favorite recipe IDs."""
+    if not email:
+        return {"favorites": []}
+    from backend.auth import get_user
+    from backend.community import get_user_favorites
+    user = await get_user(email)
+    if not user:
+        return {"favorites": []}
+    favs = await get_user_favorites(user["id"])
+    return {"favorites": favs}
+
+
+@app.get("/api/community/stats")
+async def community_stats():
+    """Get community statistics."""
+    from backend.community import get_community_stats
+    return await get_community_stats()
+
+

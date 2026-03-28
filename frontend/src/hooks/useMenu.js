@@ -209,6 +209,7 @@ export function useMenu() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(preferences),
+        signal: AbortSignal.timeout(60000),
       })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
@@ -233,7 +234,11 @@ export function useMenu() {
         .catch(() => {})
       setView('menu')
     } catch (e) {
-      setError(e.message)
+      if (e.name === 'TimeoutError') {
+        setError('Det tog för lång tid att skapa menyn. Försök igen om en stund.')
+      } else {
+        setError(e.message)
+      }
     } finally {
       setLoading(false)
     }
@@ -248,6 +253,7 @@ export function useMenu() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ menu_id: menu.id, day, reason, recipe_id }),
+        signal: AbortSignal.timeout(30000),
       })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
@@ -257,7 +263,11 @@ export function useMenu() {
       setMenu(updatedMenu)
       window.plausible?.('Recipe Swapped', { props: { day } })
     } catch (e) {
-      setError(e.message)
+      if (e.name === 'TimeoutError') {
+        setError('Det tog för lång tid att byta recept. Försök igen.')
+      } else {
+        setError(e.message)
+      }
     } finally {
       setSwapping(null)
     }

@@ -1,4 +1,19 @@
+import { useState } from 'react'
+
+const CATEGORY_LABELS = {
+  all: 'Alla',
+  meat: 'Kött',
+  fish: 'Fisk',
+  dairy: 'Mejeri',
+  produce: 'Grönt',
+  pantry: 'Skafferi',
+  frozen: 'Fryst',
+  bakery: 'Bröd',
+  other: 'Övrigt',
+}
+
 export default function TopOffers({ offers, preferences, setPreferences, onGenerate, onBack, loading, loadingOffers }) {
+  const [filter, setFilter] = useState('all')
   const pinned = new Set(preferences.pinned_offer_ids || [])
   const togglePin = (id) => {
     const next = new Set(pinned)
@@ -17,6 +32,10 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
     )
   }
 
+  // Get unique categories from offers
+  const categories = ['all', ...new Set(offers.map(o => o.category || 'other'))]
+  const filtered = filter === 'all' ? offers : offers.filter(o => (o.category || 'other') === filter)
+
   return (
     <div className="fade-up">
       <div className="flex items-center justify-between mb-6">
@@ -31,17 +50,33 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
       <p className="text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
         Välj de erbjudanden du vill bygga menyn kring. Vi matchar recept som använder dem.
       </p>
-      <p className="text-xs mb-6" style={{ color: 'var(--color-text-muted)' }}>
+      <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>
         {offers.length} erbjudanden · Sorterade efter bäst rabatt · Tryck för att välja
       </p>
+
+      {/* Category filter tabs */}
+      {offers.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 no-scrollbar">
+          {categories.map(cat => (
+            <button key={cat} onClick={() => setFilter(cat)}
+              className={`btn-pill text-xs whitespace-nowrap ${filter === cat ? 'active' : ''}`}>
+              {CATEGORY_LABELS[cat] || cat}
+            </button>
+          ))}
+        </div>
+      )}
 
       {offers.length === 0 ? (
         <div className="card p-4 text-sm mb-6" style={{ background: '#fffbeb', color: '#92400e' }}>
           Inga erbjudanden hittades. Du kan fortfarande generera en meny baserad på våra recept.
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="card p-4 text-sm mb-6" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
+          Inga erbjudanden i denna kategori.
+        </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 mb-6">
-          {offers.map((offer, i) => {
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 mb-6">
+          {filtered.map((offer, i) => {
             const isPinned = pinned.has(offer.id)
             const discount = offer.discount || (offer.original_price ? Math.round((1 - offer.offer_price / offer.original_price) * 100) : 0)
             return (
@@ -72,7 +107,7 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
                     ✓ Vald — vi bygger menyn kring denna
                   </div>
                 )}
-                {i === 0 && !isPinned && (
+                {i === 0 && !isPinned && filter === 'all' && (
                   <div className="mt-2 text-xs font-medium px-2 py-0.5 rounded-full inline-block"
                     style={{ background: 'var(--color-accent-light)', color: 'var(--color-accent)' }}>
                     Bästa rabatten

@@ -61,6 +61,14 @@ async def _sqlite_init():
                 await db.execute(f"ALTER TABLE recipes ADD COLUMN {col}")
             except Exception:
                 pass
+        # User account extensions
+        for col in ["subscription_tier TEXT DEFAULT 'free'", "subscription_expires TIMESTAMP",
+                     "generations_today INTEGER DEFAULT 0", "generations_reset_date DATE",
+                     "avatar_url TEXT", "bio TEXT", "city TEXT", "is_public BOOLEAN DEFAULT FALSE"]:
+            try:
+                await db.execute(f"ALTER TABLE users ADD COLUMN {col}")
+            except Exception:
+                pass
         await db.execute(
             """INSERT OR IGNORE INTO stores (id, name, city, url, scraper_class)
                VALUES (?, ?, ?, ?, ?)""",
@@ -129,7 +137,11 @@ async def _pg_init():
             );
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT,
-                preferences TEXT, created_at TIMESTAMP DEFAULT NOW(), last_login TIMESTAMP
+                preferences TEXT, subscription_tier TEXT DEFAULT 'free',
+                subscription_expires TIMESTAMP, generations_today INTEGER DEFAULT 0,
+                generations_reset_date DATE, avatar_url TEXT, bio TEXT, city TEXT,
+                is_public BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW(), last_login TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS auth_tokens (
                 token TEXT PRIMARY KEY, email TEXT NOT NULL,
@@ -182,6 +194,34 @@ async def _pg_init():
                 recipe_count INTEGER, total_cost REAL, total_savings REAL,
                 offer_count INTEGER, generation_time_ms INTEGER,
                 created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS shared_menus (
+                id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id),
+                title TEXT NOT NULL, description TEXT, menu_data TEXT NOT NULL,
+                store_name TEXT, city TEXT, total_cost REAL, total_savings REAL,
+                num_meals INTEGER, dietary_tags TEXT, likes INTEGER DEFAULT 0,
+                views INTEGER DEFAULT 0, is_featured BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS community_likes (
+                user_id TEXT REFERENCES users(id), menu_id TEXT REFERENCES shared_menus(id),
+                created_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY (user_id, menu_id)
+            );
+            CREATE TABLE IF NOT EXISTS recipe_ratings (
+                user_id TEXT REFERENCES users(id), recipe_id TEXT,
+                rating INTEGER NOT NULL, comment TEXT,
+                created_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY (user_id, recipe_id)
+            );
+            CREATE TABLE IF NOT EXISTS user_favorites (
+                user_id TEXT REFERENCES users(id), recipe_id TEXT,
+                created_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY (user_id, recipe_id)
+            );
+            CREATE TABLE IF NOT EXISTS price_poll (
+                id SERIAL PRIMARY KEY, menu_id TEXT, answer TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS email_signups (
+                email TEXT PRIMARY KEY, created_at TIMESTAMP DEFAULT NOW()
             );
         """)
         await conn.execute("""
@@ -319,24 +359,36 @@ async def get_all_recipes() -> list[dict]:
             return [_parse_row(dict(row)) async for row in rows]
 
 
-async def get_current_offers(store_id: str, category: Optional[str] = None) -> list[dict]:
+async def get_current_offers(store_id: str, category: Optional[str] = None, fallback_days: int = 14) -> list[dict]:
+    """Get current offers for a store. Falls back to recent stale offers if none are current."""
+    results = await _get_offers_query(store_id, category, "date('now')" if not _is_postgres() else "CURRENT_DATE")
+    if not results and fallback_days > 0:
+        logger.warning(f"No current offers for {store_id} — falling back to last {fallback_days} days")
+        fallback_date = f"date('now', '-{fallback_days} days')" if not _is_postgres() else f"CURRENT_DATE - INTERVAL '{fallback_days} days'"
+        results = await _get_offers_query(store_id, category, fallback_date)
+        for r in results:
+            r["_stale"] = True
+    return results
+
+
+async def _get_offers_query(store_id: str, category: Optional[str], date_expr: str) -> list[dict]:
     if _is_postgres():
         pool = await _pg_get_pool()
         async with pool.acquire() as conn:
             if category:
                 cats = [c.strip() for c in category.split(",")]
                 rows = await conn.fetch(
-                    "SELECT * FROM offers WHERE store_id=$1 AND valid_to >= CURRENT_DATE AND category = ANY($2)",
+                    f"SELECT * FROM offers WHERE store_id=$1 AND valid_to >= {date_expr} AND category = ANY($2)",
                     store_id, cats)
             else:
                 rows = await conn.fetch(
-                    "SELECT * FROM offers WHERE store_id=$1 AND valid_to >= CURRENT_DATE", store_id)
+                    f"SELECT * FROM offers WHERE store_id=$1 AND valid_to >= {date_expr}", store_id)
             return [dict(r) for r in rows]
     else:
         import aiosqlite
         async with aiosqlite.connect(DB_PATH) as db:
             db.row_factory = aiosqlite.Row
-            query = "SELECT * FROM offers WHERE store_id = ? AND valid_to >= date('now')"
+            query = f"SELECT * FROM offers WHERE store_id = ? AND valid_to >= {date_expr}"
             params: list = [store_id]
             if category:
                 cats = [c.strip() for c in category.split(",")]

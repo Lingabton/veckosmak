@@ -6,7 +6,7 @@ test.describe('Veckosmak E2E', () => {
   test('landing page loads with key elements', async ({ page }) => {
     await page.goto(BASE)
     await expect(page.locator('text=veckosmak')).toBeVisible()
-    await expect(page.locator('text=Middagar som sparar')).toBeVisible()
+    await expect(page.locator('text=Från erbjudande till')).toBeVisible()
     await expect(page.locator('text=Skapa min veckomeny')).toBeVisible()
   })
 

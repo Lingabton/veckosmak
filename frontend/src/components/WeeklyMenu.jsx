@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import RecipeCard from './RecipeCard'
 import SavingsBanner from './SavingsBanner'
+import EmailSignup from './EmailSignup'
 
 export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onBack, onRegenerate, onFeedback, expandAll, setExpandAll, bonusOffers }) {
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
@@ -30,7 +31,6 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
           {menu.date_range || `Vecka ${menu.week_number}`} — {menu.store_name || 'ICA'}
         </p>
-        {/* Active filters (#11) */}
         {menu.active_filters && menu.active_filters.length > 0 && (
           <div className="flex gap-1.5 mt-2">
             {menu.active_filters.map(f => (
@@ -117,10 +117,19 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
         <button onClick={onShowShopping} className="btn btn-primary w-full mb-3">
           Visa inköpslista
         </button>
-        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+        {menu.id && (
+          <a href={`/api/export/menu/${menu.id}`} target="_blank" rel="noopener noreferrer"
+            className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            Ladda ner PDF
+          </a>
+        )}
+        <p className="text-xs mt-3" style={{ color: 'var(--color-text-muted)' }}>
           Din meny och inköpslista sparas automatiskt — du kan stänga appen och öppna den igen i butiken.
         </p>
       </div>
+
+      {/* Email signup */}
+      <EmailSignup context="menu" />
 
       {/* Regenerate */}
       <div className="mt-6 text-center">

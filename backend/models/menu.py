@@ -41,3 +41,4 @@ class WeeklyMenu(BaseModel):
     estimated_savings: float = 0.0
     date_range: str = ""               # "24 mar – 28 mar" for display
     active_filters: list[str] = []     # ["Laktosfri", "Fläskfri"] for display
+    offers_note: str = ""               # Warning if offers are stale or missing

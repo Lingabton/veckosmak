@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { loadChecked, saveChecked, loadHaveAtHome, saveHaveAtHome } from '../hooks/useMenu'
+import PricePoll from './PricePoll'
 
 const CATEGORIES = {
   produce: 'Frukt & grönt', meat: 'Kött & chark', fish: 'Fisk & skaldjur',
@@ -84,11 +85,15 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
     <section className="animate-fade-in">
       <div className="flex items-center justify-between mb-6 print:hidden">
         <button onClick={onBack} className="text-sm" style={{ color: 'var(--text-muted)' }}>Tillbaka</button>
-        <div className="flex gap-4">
-          <button onClick={handleShare} className="text-sm font-medium" style={{ color: 'var(--green)' }}>
-            {copySuccess ? 'Kopierat' : 'Dela'}
+        <div className="flex gap-2">
+          <button onClick={handleShare} className="text-sm font-medium px-3 py-1.5 rounded-full"
+            style={{ color: 'var(--green)', border: '1px solid var(--green)' }}>
+            {copySuccess ? '✓ Kopierat' : 'Dela'}
           </button>
-          <button onClick={() => window.print()} className="text-sm print:hidden" style={{ color: 'var(--text-muted)' }}>Skriv ut</button>
+          <button onClick={() => window.print()} className="text-sm print:hidden px-3 py-1.5 rounded-full"
+            style={{ color: 'var(--text-muted)', border: '1px solid var(--color-border)' }}>
+            Skriv ut
+          </button>
         </div>
       </div>
 
@@ -243,6 +248,8 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
           </button>
         </div>
       </div>
+      {/* Price poll — show once per menu */}
+      {menu?.id && <PricePoll menuId={menu.id} />}
     </section>
   )
 }

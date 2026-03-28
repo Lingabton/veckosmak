@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useMenu } from './hooks/useMenu'
 import PreferencesForm from './components/PreferencesForm'
 import TopOffers from './components/TopOffers'
@@ -27,21 +28,23 @@ function App() {
             <span className="text-xl font-bold tracking-tight">veckosmak</span>
             <span className="text-sm text-green-300 hidden sm:inline">från erbjudande till middag</span>
           </a>
-          {menu && (
-            <nav className="flex gap-1">
-              {[['menu', 'Meny'], ['shopping', 'Inköpslista']].map(([v, label]) => (
-                <button key={v} onClick={() => setView(v)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                    view === v ? 'bg-white/20 text-white' : 'text-green-200 hover:text-white'
-                  }`}>{label}</button>
-              ))}
-            </nav>
-          )}
+          <div className="flex items-center gap-2">
+            {menu && (
+              <nav className="flex gap-1">
+                {[['menu', 'Meny'], ['shopping', 'Inköpslista']].map(([v, label]) => (
+                  <button key={v} onClick={() => setView(v)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      view === v ? 'bg-white/20 text-white' : 'text-green-200 hover:text-white'
+                    }`}>{label}</button>
+                ))}
+              </nav>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-5 py-8 flex-1 w-full">
-        {error && view !== 'preferences' && (
+        {error && (
           <div className="card p-4 mb-6 fade-in" style={{ background: '#fff5f5', borderColor: '#ffc9c9' }}>
             <p className="text-sm" style={{ color: '#c92a2a' }}>{error}</p>
             <button onClick={generateMenu} className="text-sm font-medium mt-2 underline" style={{ color: '#c92a2a' }}>Försök igen</button>
@@ -91,7 +94,7 @@ function App() {
       <footer className="no-print" style={{ borderTop: '1px solid var(--color-border-light)' }}>
         <div className="max-w-2xl mx-auto px-5 py-4 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
           <span><b style={{ color: 'var(--color-text-secondary)' }}>veckosmak</b> — gratis menyplanering</span>
-          <span>1100+ ICA-butiker · 600+ recept · {new Date().getFullYear()}</span>
+          <span>ICA · Willys · Coop · Lidl · 600+ recept · {new Date().getFullYear()}</span>
         </div>
       </footer>
     </div>

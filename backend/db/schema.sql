@@ -75,6 +75,14 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE NOT NULL,
     name TEXT,
     preferences TEXT,            -- JSON: saved UserPreferences
+    subscription_tier TEXT DEFAULT 'free',  -- 'free', 'premium', 'family'
+    subscription_expires TIMESTAMP,
+    generations_today INTEGER DEFAULT 0,
+    generations_reset_date DATE,
+    avatar_url TEXT,
+    bio TEXT,
+    city TEXT,
+    is_public BOOLEAN DEFAULT FALSE,       -- profile visible to community
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP
 );
@@ -184,3 +192,68 @@ CREATE TABLE IF NOT EXISTS generation_log (
 );
 
 CREATE INDEX IF NOT EXISTS idx_gen_log_date ON generation_log(created_at);
+
+-- Prispoll — vad skulle du betala?
+CREATE TABLE IF NOT EXISTS price_poll (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    menu_id TEXT,
+    answer TEXT NOT NULL,            -- "0", "29", "49", "79"
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Mejlsignup — veckobrev
+CREATE TABLE IF NOT EXISTS email_signups (
+    email TEXT PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Shared menus — public menus for community
+CREATE TABLE IF NOT EXISTS shared_menus (
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    menu_data TEXT NOT NULL,          -- JSON: full WeeklyMenu
+    store_name TEXT,
+    city TEXT,
+    total_cost REAL,
+    total_savings REAL,
+    num_meals INTEGER,
+    dietary_tags TEXT,                -- JSON array: ["vegetarian", "glutenfree"]
+    likes INTEGER DEFAULT 0,
+    views INTEGER DEFAULT 0,
+    is_featured BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_shared_menus_user ON shared_menus(user_id);
+CREATE INDEX IF NOT EXISTS idx_shared_menus_likes ON shared_menus(likes DESC);
+CREATE INDEX IF NOT EXISTS idx_shared_menus_city ON shared_menus(city);
+
+-- Community likes — track who liked what
+CREATE TABLE IF NOT EXISTS community_likes (
+    user_id TEXT REFERENCES users(id),
+    menu_id TEXT REFERENCES shared_menus(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, menu_id)
+);
+
+-- Recipe ratings — per-user ratings
+CREATE TABLE IF NOT EXISTS recipe_ratings (
+    user_id TEXT REFERENCES users(id),
+    recipe_id TEXT,
+    rating INTEGER NOT NULL,          -- 1-5
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, recipe_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_recipe_ratings_recipe ON recipe_ratings(recipe_id);
+
+-- User favorites — saved recipes
+CREATE TABLE IF NOT EXISTS user_favorites (
+    user_id TEXT REFERENCES users(id),
+    recipe_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, recipe_id)
+);

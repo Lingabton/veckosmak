@@ -3,12 +3,19 @@
 import json
 import logging
 import re
+import time
 
 import httpx
 
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# Circuit breaker for Cloudflare: skip after consecutive failures
+_cf_failures = 0
+_cf_disabled_until = 0.0
+_CF_MAX_FAILURES = 3
+_CF_COOLDOWN_SECONDS = 600  # 10 minutes
 
 
 async def call_ai(
@@ -22,16 +29,28 @@ async def call_ai(
     Tries Cloudflare Workers AI (free) first, falls back to Claude (premium).
     Set use_premium=True to go directly to Claude for complex tasks.
     """
+    global _cf_failures, _cf_disabled_until
     settings = get_settings()
 
-    # Try Cloudflare Workers AI first (free)
-    if settings.cloudflare_api_token and settings.cloudflare_account_id and not use_premium:
+    # Try Cloudflare Workers AI first (free), unless circuit breaker is open
+    cf_available = (
+        settings.cloudflare_api_token
+        and settings.cloudflare_account_id
+        and not use_premium
+        and time.time() > _cf_disabled_until
+    )
+    if cf_available:
         try:
             result = await _call_cloudflare(system_prompt, user_message, max_tokens, settings)
             if result:
+                _cf_failures = 0  # Reset on success
                 logger.info("AI response from Cloudflare Workers AI (free)")
                 return result
         except Exception as e:
+            _cf_failures += 1
+            if _cf_failures >= _CF_MAX_FAILURES:
+                _cf_disabled_until = time.time() + _CF_COOLDOWN_SECONDS
+                logger.warning(f"Cloudflare circuit breaker OPEN — disabled for {_CF_COOLDOWN_SECONDS}s after {_cf_failures} failures")
             logger.warning(f"Cloudflare Workers AI failed: {e}")
 
     # Fall back to Claude
