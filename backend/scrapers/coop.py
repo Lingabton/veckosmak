@@ -1,16 +1,20 @@
 """Coop grocery store offer scraper.
 
-STATUS: NOT YET WORKING — Coop's offers are loaded client-side via their
-DKE API (external.api.coop.se/dke/offers/) which requires an API subscription
-key. The key is publicly visible in their page source but the endpoint returns
-404 — likely needs additional auth headers or has been moved.
+STATUS: NOT YET WORKING — Coop's offers are served via their DKE API at
+external.api.coop.se/dke/offers/v1/store-offers?storeId=STORE_ID
 
-To make this work, options are:
-1. Reverse-engineer the full auth flow from coop.se/butiker-erbjudanden/
-2. Use a headless browser (Playwright) to render the SPA
-3. Partner with Coop for API access
+The API requires:
+- Header: Ocp-Apim-Subscription-Key: 32895bd5b86e4a5ab6e94fb0bc8ae234
+- Header: Authorization: Bearer <oauth_token>
 
-For now, this scraper returns an empty list and logs a warning.
+Without a Bearer token, the API returns 200 but with an empty body.
+The OAuth token endpoint is at external.api.coop.se/ecommerce/coop/oauth/token
+but requires client credentials not exposed in the frontend.
+
+Options to implement:
+1. Headless browser (Playwright) to capture XHR responses from store pages
+2. Reverse-engineer auth via Coop mobile app with MITM proxy
+3. Third-party aggregator (matspar.se, allahushall.se)
 """
 
 import logging
@@ -38,8 +42,8 @@ class CoopScraper(AbstractScraper):
 
     async def fetch_offers(self, store_id: str) -> list[Offer]:
         logger.warning(
-            f"Coop scraper not yet implemented — their offers API requires "
-            f"client-side rendering. Returning 0 offers for {store_id}."
+            f"Coop scraper not yet implemented — their DKE API requires OAuth "
+            f"Bearer token. Returning 0 offers for {store_id}."
         )
         return []
 
