@@ -24,9 +24,9 @@ function App() {
       <header className="no-print" style={{ background: 'var(--color-brand-dark)' }}>
         <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between">
           <a href="/" onClick={(e) => { e.preventDefault(); setView(menu ? 'menu' : 'preferences') }}
-            className="flex items-baseline gap-2 text-white hover:opacity-90 transition-opacity">
-            <span className="text-xl font-bold tracking-tight">veckosmak</span>
-            <span className="text-sm text-green-300 hidden sm:inline">från erbjudande till middag</span>
+            className="flex items-baseline gap-3 text-white hover:opacity-90 transition-opacity">
+            <span className="font-display text-2xl font-bold tracking-tight" style={{ letterSpacing: '-0.03em' }}>veckosmak</span>
+            <span className="text-xs font-light tracking-wide text-green-300/80 hidden sm:inline uppercase" style={{ letterSpacing: '0.1em' }}>erbjudande till middag</span>
           </a>
           <div className="flex items-center gap-2">
             {menu && (

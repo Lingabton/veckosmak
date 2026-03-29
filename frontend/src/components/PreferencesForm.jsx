@@ -119,17 +119,22 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
     <div className="fade-up">
 
       {/* === SECTION 1: Hero === */}
-      <section className="text-center mb-10">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight mb-4">
-          Från erbjudande till<br/><span style={{color:'var(--color-accent)'}}>riktig middag</span>
+      <section className="mb-12">
+        <h1 className="font-display text-4xl sm:text-5xl font-bold leading-[1.1] mb-5" style={{ letterSpacing: '-0.03em' }}>
+          Från erbjudande<br/>till <span className="font-display italic" style={{color:'var(--color-accent)'}}>riktig middag</span>
         </h1>
-        <p className="text-lg leading-relaxed max-w-md mx-auto" style={{color:'var(--color-text-secondary)'}}>
-          Bygg veckans meny från butikens riktiga erbjudanden och få inköpslistan klar direkt.
+        <p className="text-lg leading-relaxed max-w-md" style={{color:'var(--color-text-secondary)'}}>
+          Bygg veckans meny från butikens riktiga kampanjer. Recept, inköpslista och besparing — klar direkt.
         </p>
-        <div className="flex items-center justify-center gap-5 mt-6 text-sm" style={{color:'var(--color-text-muted)'}}>
-          <span>Butiksspecifika erbjudanden</span>
-          <span className="w-1 h-1 rounded-full" style={{background:'var(--color-border)'}} />
-          <span>Färdig inköpslista</span>
+        <div className="flex items-center gap-4 mt-6 text-sm" style={{color:'var(--color-text-muted)'}}>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{background:'var(--color-brand)'}} />
+            Butiksspecifika erbjudanden
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{background:'var(--color-accent)'}} />
+            Färdig inköpslista
+          </span>
         </div>
       </section>
 
@@ -160,19 +165,21 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
       {/* Product mockup */}
       {!menu && <ProductPreview />}
 
-      {/* === SECTION 2: Så funkar det === */}
+      {/* === SECTION 2: Så funkar det — stacked, left-aligned === */}
       <section className="mb-10">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-4">
           {[
-            {n:'1',t:'Vi läser erbjudanden',d:'Från din valda ICA-butik'},
-            {n:'2',t:'Vi bygger middagar',d:'Anpassat till ditt hushåll'},
-            {n:'3',t:'Du får veckan klar',d:'Meny, recept och inköpslista'},
-          ].map(s=>(
-            <div key={s.n} className="text-center">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 text-sm font-bold text-white"
-                style={{background:'var(--color-brand)'}}>{s.n}</div>
-              <p className="text-sm font-semibold">{s.t}</p>
-              <p className="text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>{s.d}</p>
+            {n:'1',t:'Vi läser erbjudanden',d:'Från din valda butik — ICA eller Willys'},
+            {n:'2',t:'Vi bygger middagar',d:'Anpassat till ditt hushåll och kostpreferenser'},
+            {n:'3',t:'Du får veckan klar',d:'Meny, recept och inköpslista direkt'},
+          ].map((s, i) => (
+            <div key={s.n} className={`flex items-start gap-4 slide-in delay-${i+1}`}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold text-white"
+                style={{background: i === 2 ? 'var(--color-accent)' : 'var(--color-brand)'}}>{s.n}</div>
+              <div>
+                <p className="text-sm font-semibold">{s.t}</p>
+                <p className="text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>{s.d}</p>
+              </div>
             </div>
           ))}
         </div>

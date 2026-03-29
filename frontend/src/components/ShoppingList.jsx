@@ -97,7 +97,7 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
         </div>
       </div>
 
-      <h1 className="text-2xl font-bold tracking-tight mb-1">Inköpslista</h1>
+      <h1 className="font-display text-3xl font-bold mb-1" style={{ letterSpacing: '-0.03em' }}>Inköpslista</h1>
       <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
         {menu.date_range || `Vecka ${menu.week_number}`} — {items_on_offer} erbjudanden
       </p>
