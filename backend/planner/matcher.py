@@ -12,14 +12,15 @@ logger = logging.getLogger(__name__)
 # Normalized names: map common ingredient terms to canonical forms
 # These help bridge the gap between recipe language and offer language
 SYNONYMS = {
-    "kycklingfilé": ["kyckling", "kycklingfile", "kycklingbröst"],
-    "nötfärs": ["färs", "blandfärs", "nötfärs", "köttfärs"],
+    "kycklingfilé": ["kyckling", "kycklingfile", "kycklingbröst", "kycklingfilé"],
+    "nötfärs": ["nötfärs", "köttfärs", "blandfärs", "färs"],
+    "fläskfärs": ["fläskfärs"],
     "falukorv": ["falukorv", "korv"],
-    "laxfilé": ["lax", "laxfile"],
-    "fläskfilé": ["fläskfile", "fläsk"],
-    "fläskkarré": ["karré", "fläskkarré"],
+    "laxfilé": ["lax", "laxfile", "laxfilé"],
+    "fläskfilé": ["fläskfile", "fläskfilé", "fläsk filé"],
+    "fläskkarré": ["fläskkarré", "fläsk karré"],
     "pasta": ["spaghetti", "penne", "fusilli", "tagliatelle", "makaroner"],
-    "grädde": ["vispgrädde", "matlagningsgrädde", "matgrädde"],
+    "grädde": ["vispgrädde", "matlagningsgrädde", "matgrädde", "grädde"],
     "krossade tomater": ["krossade tomater", "tomater krossade"],
     "ris": ["ris", "jasminris", "basmatiris"],
     "potatis": ["potatis", "fast potatis", "mjölig potatis"],
@@ -36,6 +37,16 @@ SYNONYMS = {
     "kvarg": ["kvarg"],
     "chorizo": ["chorizo"],
     "torsk": ["torsk", "torskfilé"],
+}
+
+# Ingredients that should NOT match offers — sauces, condiments, and items
+# where partial word overlap causes false positives
+NON_MATCHABLE_INGREDIENTS = {
+    "ostronsås", "sojasås", "worcestershiresås", "hoisinsås", "tabasco",
+    "sesamolja", "rapsolja", "olivolja", "kokosmjölk",
+    "hasselnötter", "rostade hasselnötter", "valnötter", "cashewnötter",
+    "jordnötter", "mandel", "pistage",
+    "kycklinglever", "kycklingfond",
 }
 
 
@@ -67,15 +78,23 @@ def normalize(text: str) -> str:
 def clean_ingredient_name(name: str) -> str:
     """Clean ingredient name by removing amounts, alternatives, and filler."""
     name = name.lower().strip()
-    # Remove leading amounts like "1 gul lök" -> "gul lök"
-    name = re.sub(r'^\d+[\s/½¼¾]*\s*', '', name)
-    # Remove parenthetical info
+    # Remove leading amounts like "1 gul lök", "2 - 2 1/2 dl riven ost"
+    name = re.sub(r'^[\d\s/½¼¾\-,\.]+(?:dl|cl|ml|l|g|kg|msk|tsk|st|krm|port)\s+', '', name)
+    name = re.sub(r'^[\d/½¼¾\-]+\s+', '', name)
+    name = re.sub(r'^\d+\s*', '', name)
+    # Remove parenthetical info like "(à 500 g)", "(ca 1 kg)"
     name = re.sub(r'\(.*?\)', '', name)
+    # Remove "att steka i", "till servering", etc.
+    name = re.sub(r'\s+att\s+.*$', '', name)
+    name = re.sub(r'\s+till\s+.*$', '', name)
+    name = re.sub(r'\s+för\s+.*$', '', name)
     # Split on "eller" and take first option
     if " eller " in name:
         name = name.split(" eller ")[0].strip()
     # Remove "à X g" type packaging info
     name = re.sub(r'\bà\s*\d+.*$', '', name)
+    # Remove "gärna ..." qualifiers
+    name = re.sub(r'\s*gärna\s+.*$', '', name)
     # Remove "förp" prefix
     name = re.sub(r'^\d*\s*förp\s*', '', name)
     return name.strip()
@@ -129,6 +148,11 @@ def match_ingredient_to_offers(
     Returns the best matching Offer or None if no good match found.
     """
     if ingredient.is_pantry_staple:
+        return None
+
+    # Skip ingredients known to cause false positives
+    cleaned = clean_ingredient_name(ingredient.name)
+    if cleaned in NON_MATCHABLE_INGREDIENTS:
         return None
 
     candidate_names = get_canonical_names(ingredient.name)
