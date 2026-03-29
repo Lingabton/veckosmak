@@ -39,6 +39,19 @@ SYNONYMS = {
 }
 
 
+# Offers that should NEVER match recipe ingredients
+# These are non-cooking items that cause false positives
+NON_COOKING_OFFERS = {
+    "läsk", "coca-cola", "pepsi", "fanta", "sprite", "7up",
+    "godis", "chips", "snacks", "tuggummi",
+    "toapapper", "hushållspapper", "diskmedel", "tvättmedel",
+    "schampo", "tandkräm", "tvål", "blöja", "servett",
+    "saft", "juice", "smoothie", "energidryck",
+    "kaffe", "te ",
+    "glass",
+}
+
+
 def normalize(text: str) -> str:
     """Lowercase, strip, remove common filler words."""
     text = text.lower().strip()
@@ -126,6 +139,16 @@ def match_ingredient_to_offers(
         offer_name = normalize(offer.product_name)
         offer_words = set(offer_name.split())
 
+        # Skip non-cooking offers (läsk, godis, toapapper, etc.)
+        # Use word-boundary check to avoid blocking "fläsk" when blocking "läsk"
+        if any(
+            offer_name == block or
+            offer_name.startswith(block + " ") or
+            " " + block in offer_name
+            for block in NON_COOKING_OFFERS
+        ):
+            continue
+
         for name in candidate_names:
             name_norm = normalize(name)
             if len(name_norm) < 3:
@@ -137,9 +160,10 @@ def match_ingredient_to_offers(
             word_score = _word_match(name_words, offer_words)
 
             # Strategy 2: Substring containment (whole canonical name in offer or vice versa)
-            if len(name_norm) >= 4 and name_norm in offer_name:
+            # Require minimum 5 chars to avoid "läsk" matching "fläsk" etc.
+            if len(name_norm) >= 5 and name_norm in offer_name:
                 word_score = max(word_score, 0.9)
-            elif len(offer_name) >= 4 and offer_name in name_norm:
+            elif len(offer_name) >= 5 and offer_name in name_norm:
                 word_score = max(word_score, 0.85)
 
             # Strategy 3: Exact match
