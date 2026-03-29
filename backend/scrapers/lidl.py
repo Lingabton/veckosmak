@@ -1,14 +1,21 @@
 """Lidl grocery store offer scraper.
 
-Uses Lidl's gridboxes API: https://www.lidl.se/p/api/gridboxes/SE/sv
-Returns structured JSON with product data including prices, dates, and categories.
+Uses two Schwarz/Lidl APIs:
+1. Gridboxes API (lidl.se/p/api/gridboxes/SE/sv) — weekly specials, mostly non-food
+2. Leaflets API (endpoints.leaflets.schwarz) — reklamblad metadata (titles, dates, IDs)
 
-LIMITATION: The API currently returns mostly NonFood items (~25 products).
-Food offers may be loaded from a separate endpoint or are only available
-via the Lidl Plus app. The scraper works but may return few or zero food offers
-depending on the week.
+LIMITATION: The gridboxes API currently returns mostly non-food items.
+Food offers from the reklamblad (weekly flyer) are only accessible via the
+Lidl Plus app or client-side JS rendering. The leaflet detail/pages endpoint
+is not publicly accessible.
 
-Lidl offers are national (same for all stores in Sweden).
+Lidl offers are national — same for all stores in Sweden.
+
+Known API details:
+- Gridboxes: GET lidl.se/p/api/gridboxes/SE/sv → JSON array of products
+- Leaflet overview: GET endpoints.leaflets.schwarz/v4/overview?subcategory_id=be7864da-6d56-11e8-8e93-005056ab0fb6
+- Leaflet category "Reklamblad": be7864da-6d56-11e8-8e93-005056ab0fb6
+- Category pages (HTML, no product data): lidl.se/c/mandag-soendag/a10090968
 """
 
 import hashlib
@@ -24,7 +31,9 @@ from backend.scrapers.ica_maxi import classify_category
 
 logger = logging.getLogger(__name__)
 
-LIDL_API_URL = "https://www.lidl.se/p/api/gridboxes/SE/sv"
+GRIDBOXES_URL = "https://www.lidl.se/p/api/gridboxes/SE/sv"
+LEAFLETS_URL = "https://endpoints.leaflets.schwarz/v4/overview"
+LEAFLET_SUBCATEGORY_ID = "be7864da-6d56-11e8-8e93-005056ab0fb6"
 
 LIDL_STORES: dict[str, dict] = {
     "lidl-stockholm-hornsberg": {"name": "Lidl Hornsberg", "city": "Stockholm", "type": "lidl"},
@@ -49,37 +58,46 @@ class LidlScraper(AbstractScraper):
 
     async def fetch_offers(self, store_id: str) -> list[Offer]:
         logger.info(f"Fetching Lidl offers (national, tagged as {store_id})")
-
-        try:
-            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-                resp = await client.get(LIDL_API_URL, headers=BASE_HEADERS)
-                resp.raise_for_status()
-                data = resp.json()
-        except Exception as e:
-            logger.error(f"Lidl API request failed: {e}")
-            return []
-
-        if not isinstance(data, list):
-            logger.warning(f"Lidl API returned unexpected type: {type(data)}")
-            return []
-
-        # Filter to unique products only (skip variants)
-        unique = [item for item in data if item.get("productType") == "RETAIL_HEAD"]
-        logger.info(f"Lidl API returned {len(data)} items, {len(unique)} unique products")
-
         offers = []
-        for item in unique:
-            offer = self._parse_item(item, store_id)
-            if offer:
-                offers.append(offer)
 
-        logger.info(f"Parsed {len(offers)} Lidl offers")
+        # Source 1: Gridboxes API — weekly specials
+        gridbox_offers = await self._fetch_gridboxes(store_id)
+        offers.extend(gridbox_offers)
+
         if not offers:
-            logger.warning("Lidl returned 0 usable offers — food items may not be in the gridboxes API this week")
+            logger.warning(
+                "Lidl: 0 offers from gridboxes API — food offers may only be "
+                "available via Lidl Plus app this week"
+            )
 
         return offers
 
-    def _parse_item(self, item: dict, store_id: str) -> Optional[Offer]:
+    async def _fetch_gridboxes(self, store_id: str) -> list[Offer]:
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+                resp = await client.get(GRIDBOXES_URL, headers=BASE_HEADERS)
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as e:
+            logger.error(f"Lidl gridboxes API failed: {e}")
+            return []
+
+        if not isinstance(data, list):
+            return []
+
+        # Filter to unique products only
+        unique = [item for item in data if item.get("productType") == "RETAIL_HEAD"]
+        logger.info(f"Lidl gridboxes: {len(data)} items, {len(unique)} unique")
+
+        offers = []
+        for item in unique:
+            offer = self._parse_gridbox_item(item, store_id)
+            if offer:
+                offers.append(offer)
+
+        return offers
+
+    def _parse_gridbox_item(self, item: dict, store_id: str) -> Optional[Offer]:
         try:
             name = item.get("fullTitle", "")
             if not name:
@@ -94,34 +112,18 @@ class LidlScraper(AbstractScraper):
             brand = brand_data.get("name") if isinstance(brand_data, dict) else None
 
             category_raw = item.get("category", "other")
-            if category_raw == "Food":
-                category = classify_category(name, brand or "")
-            else:
-                category = "other"
+            category = classify_category(name, brand or "") if category_raw == "Food" else "other"
 
-            # Parse dates from unix timestamps
+            # Dates from unix timestamps
             start_ts = item.get("storeStartDate")
             end_ts = item.get("storeEndDate")
             today = date.today()
+            valid_from = datetime.fromtimestamp(start_ts).date() if start_ts else today - timedelta(days=today.weekday())
+            valid_to = datetime.fromtimestamp(end_ts).date() if end_ts else valid_from + timedelta(days=6)
 
-            if start_ts:
-                valid_from = datetime.fromtimestamp(start_ts).date()
-            else:
-                valid_from = today - timedelta(days=today.weekday())
-
-            if end_ts:
-                valid_to = datetime.fromtimestamp(end_ts).date()
-            else:
-                valid_to = valid_from + timedelta(days=6)
-
-            # Image
             image_url = item.get("image")
-
-            # Badge text for raw_text
             badges = item.get("stockAvailability", {}).get("badgeInfo", {}).get("badges", [])
             badge_text = badges[0].get("text", "") if badges else ""
-
-            # Lidl Plus
             requires_membership = "lidl plus" in name.lower() or "plus" in badge_text.lower()
 
             offer_id = hashlib.md5(f"lidl:{name}:{item.get('productId', '')}".encode()).hexdigest()[:12]
@@ -143,7 +145,6 @@ class LidlScraper(AbstractScraper):
                 image_url=image_url,
                 raw_text=f"{name} | {offer_price} kr | {badge_text}",
             )
-
         except Exception as e:
             logger.debug(f"Failed to parse Lidl item: {e}")
             return None
