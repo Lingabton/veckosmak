@@ -31,6 +31,12 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
         <h1 className="font-display text-3xl font-bold" style={{ letterSpacing: '-0.03em' }}>Din veckomeny</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
           {menu.date_range || `Vecka ${menu.week_number}`} — {menu.store_name || 'ICA'}
+          {menu.store_id?.startsWith('ica') && (
+            <a href={`https://www.ica.se/erbjudanden/`} target="_blank" rel="noopener noreferrer"
+              className="ml-2 font-medium" style={{ color: 'var(--color-brand)' }}>
+              Se reklamblad
+            </a>
+          )}
         </p>
         {menu.preferences && (
           <div className="flex flex-wrap gap-2 mt-2">

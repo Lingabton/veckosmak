@@ -135,6 +135,23 @@ class IcaMaxiScraper(AbstractScraper):
         "Accept-Language": "sv-SE,sv;q=0.9",
     }
 
+    # Regex to extract individual offer objects from the weeklyOffers JS array
+    _WEEKLY_OFFER_RE = re.compile(
+        r'\{"id":"(\d+)",'
+        r'"details":\{"brand":"([^"]*)",'
+        r'"customerInformation":"[^"]*",'
+        r'"disclaimer":"[^"]*",'
+        r'"packageInformation":"([^"]*)",'
+        r'"name":"([^"]*)",'
+        r'"mechanicInfo":"([^"]*)",'
+        r'"isSelfScan":[a-z]+\},'
+        r'"category":\{"articleGroupName":"([^"]*)",'
+        r'"articleGroupId":\d+,'
+        r'"expandedArticleGroupId":\d+\},'
+        r'"usesLeft":[a-z]+,'
+        r'"validTo":"([^"]*)"'
+    )
+
     async def fetch_offers(self, store_id: str) -> list[Offer]:
         store = STORE_REGISTRY.get(store_id)
         if not store:
@@ -157,17 +174,24 @@ class IcaMaxiScraper(AbstractScraper):
                     logger.error(f"All scraping attempts failed for {store_id}")
                     return []
 
-        soup = BeautifulSoup(resp.text, "html.parser")
-        cards = soup.find_all("article", class_="offer-card")
-        logger.info(f"Found {len(cards)} offer cards")
-
-        if not cards:
-            logger.warning("No offer cards found — page structure may have changed")
-            return []
-
         today = date.today()
         week_start = today - timedelta(days=today.weekday())
         week_end = week_start + timedelta(days=6)
+
+        # Strategy 1: Extract ALL offers from inline weeklyOffers JS data
+        offers = self._parse_weekly_offers_json(resp.text, store_id, week_start, week_end)
+        if offers:
+            logger.info(f"Parsed {len(offers)} offers from weeklyOffers JSON")
+            return offers
+
+        # Strategy 2 (fallback): Parse offer-card HTML elements
+        soup = BeautifulSoup(resp.text, "html.parser")
+        cards = soup.find_all("article", class_="offer-card")
+        logger.info(f"Fallback: found {len(cards)} offer cards in HTML")
+
+        if not cards:
+            logger.warning("No offers found — page structure may have changed")
+            return []
 
         offers = []
         for card in cards:
@@ -175,7 +199,64 @@ class IcaMaxiScraper(AbstractScraper):
             if offer:
                 offers.append(offer)
 
-        logger.info(f"Parsed {len(offers)} offers successfully")
+        logger.info(f"Parsed {len(offers)} offers from HTML")
+        return offers
+
+    def _parse_weekly_offers_json(
+        self, html: str, store_id: str, valid_from: date, valid_to: date
+    ) -> list[Offer]:
+        """Extract offers from the weeklyOffers JS array embedded in the page."""
+        matches = self._WEEKLY_OFFER_RE.findall(html)
+        if not matches:
+            return []
+
+        offers = []
+        for offer_id, brand, pkg, name, mechanic_info, category_name, valid_to_str in matches:
+            try:
+                mechanic = mechanic_info.replace("\\u002F", "/")
+                offer_price, quantity_deal, unit = parse_price(mechanic)
+
+                # Try to parse original price from mechanic
+                original_price = parse_original_price(mechanic)
+
+                # Parse valid_to date
+                try:
+                    vto = date.fromisoformat(valid_to_str[:10])
+                except (ValueError, IndexError):
+                    vto = valid_to
+
+                category = classify_category(name, brand)
+                image_url = None  # Not available in JSON data
+
+                oid = hashlib.md5(f"{store_id}-{offer_id}-{name}".encode()).hexdigest()[:12]
+                raw_text = f"{name} | {brand} | {mechanic} | {pkg}"
+
+                # Parse restriction for max_per_household
+                max_per_household = None
+                restriction_match = re.search(r"[Mm]ax\s*(\d+)", html[html.find(f'"{offer_id}"'):html.find(f'"{offer_id}"')+500])
+                if restriction_match:
+                    max_per_household = int(restriction_match.group(1))
+
+                offers.append(Offer(
+                    id=oid,
+                    store_id=store_id,
+                    product_name=name,
+                    brand=brand or None,
+                    category=category,
+                    offer_price=offer_price,
+                    original_price=original_price,
+                    unit=unit,
+                    quantity_deal=quantity_deal,
+                    max_per_household=max_per_household,
+                    valid_from=valid_from,
+                    valid_to=vto,
+                    requires_membership=False,
+                    image_url=image_url,
+                    raw_text=raw_text,
+                ))
+            except Exception as e:
+                logger.debug(f"Failed to parse weekly offer {name}: {e}")
+
         return offers
 
     def _parse_card(

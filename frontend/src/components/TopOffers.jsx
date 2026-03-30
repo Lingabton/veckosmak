@@ -46,7 +46,7 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
         </button>
       </div>
 
-      <h1 className="text-2xl font-bold tracking-tight mb-1">Veckans erbjudanden</h1>
+      <h1 className="font-display text-3xl font-bold mb-1" style={{ letterSpacing: '-0.03em' }}>Veckans erbjudanden</h1>
       <p className="text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
         Välj de erbjudanden du vill bygga menyn kring. Vi matchar recept som använder dem.
       </p>
