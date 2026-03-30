@@ -268,7 +268,7 @@ def format_recipes_for_prompt(recipes: list[Recipe], offers: list[Offer], match_
     scored.sort(key=lambda x: -x[2])
 
     lines = []
-    for r, matches, _ in scored[:30]:
+    for r, matches, _ in scored[:60]:
         tags = ", ".join(r.tags) if r.tags else ""
         diet = ", ".join(r.diet_labels) if r.diet_labels else ""
         key_ings = [i.name for i in r.ingredients if not i.is_pantry_staple][:5]
@@ -352,28 +352,49 @@ def generate_fallback_menu(
         scored.append((r, score))
     scored.sort(key=lambda x: -x[1])
 
-    # Take top 3x candidates and randomly pick from them for variety
-    pool_size = min(len(scored), preferences.num_dinners * 3)
+    # Take top 6x candidates for a wider pool, then enforce variety
+    pool_size = min(len(scored), preferences.num_dinners * 6)
     pool = scored[:pool_size]
     random.shuffle(pool)
 
+    # Classify each recipe by its primary protein
+    def _primary_protein(recipe):
+        for ing in recipe.ingredients:
+            if ing.is_pantry_staple:
+                continue
+            name = ing.name.lower()
+            if 'kyckling' in name: return 'kyckling'
+            if 'lax' in name: return 'lax'
+            if any(x in name for x in ['nötfärs', 'köttfärs', 'blandfärs']): return 'färs'
+            if 'fläsk' in name: return 'fläsk'
+            if 'torsk' in name: return 'torsk'
+            if 'korv' in name: return 'korv'
+            if 'räk' in name: return 'räkor'
+            if 'tofu' in name or 'bönor' in name or 'linser' in name: return 'veg-protein'
+            if ing.category == 'meat': return 'övrigt-kött'
+            if ing.category == 'fish': return 'övrigt-fisk'
+        return 'vegetarisk'
+
     selected = []
     used_ids = set()
-    used_categories = []
+    used_proteins = []
     for r, _ in pool:
         if r.id in used_ids:
             continue
-        # Avoid same main protein category twice in a row
-        main_cat = next((i.category for i in r.ingredients if i.category in ('meat','fish') and not i.is_pantry_staple), 'other')
-        if used_categories and used_categories[-1] == main_cat and main_cat != 'other':
+        protein = _primary_protein(r)
+        # Don't repeat the same protein source (allow max 2 of same in a 7-day menu)
+        if used_proteins.count(protein) >= 2:
+            continue
+        # Never repeat same protein two days in a row
+        if used_proteins and used_proteins[-1] == protein:
             continue
         selected.append(r)
         used_ids.add(r.id)
-        used_categories.append(main_cat)
+        used_proteins.append(protein)
         if len(selected) >= preferences.num_dinners:
             break
 
-    # If not enough after variety filter, fill from remaining
+    # If not enough after variety filter, fill from remaining (relax constraints)
     if len(selected) < preferences.num_dinners:
         for r, _ in pool:
             if r.id not in used_ids:

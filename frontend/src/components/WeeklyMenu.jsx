@@ -32,6 +32,21 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
           {menu.date_range || `Vecka ${menu.week_number}`} — {menu.store_name || 'ICA'}
         </p>
+        {menu.preferences && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-border-light)', color: 'var(--color-text-secondary)' }}>
+              {menu.preferences.household_size} pers
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-border-light)', color: 'var(--color-text-secondary)' }}>
+              {menu.meals?.length} middagar
+            </span>
+            {menu.preferences.budget_per_week && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-border-light)', color: 'var(--color-text-secondary)' }}>
+                Budget: {menu.preferences.budget_per_week} kr
+              </span>
+            )}
+          </div>
+        )}
         {menu.active_filters && menu.active_filters.length > 0 && (
           <div className="flex gap-1.5 mt-2">
             {menu.active_filters.map(f => (
