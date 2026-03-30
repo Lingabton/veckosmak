@@ -137,6 +137,38 @@ def _word_match(ingredient_words: set[str], offer_words: set[str]) -> float:
     return 0.0
 
 
+# Pre-indexed offers for fast lookup
+_offer_index: dict[str, list[Offer]] = {}
+_offer_index_hash: str = ""
+
+
+def _build_offer_index(offers: list[Offer]) -> dict[str, list[Offer]]:
+    """Build keyword index for fast offer lookup."""
+    global _offer_index, _offer_index_hash
+    h = f"{len(offers)}:{offers[0].id if offers else ''}"
+    if h == _offer_index_hash:
+        return _offer_index
+
+    index: dict[str, list[Offer]] = {"__all__": offers}
+    for offer in offers:
+        name = normalize(offer.product_name)
+        for word in name.split():
+            if len(word) >= 3:
+                if word not in index:
+                    index[word] = []
+                index[word].append(offer)
+        # Also index by category
+        cat = offer.category
+        cat_key = f"__cat_{cat}"
+        if cat_key not in index:
+            index[cat_key] = []
+        index[cat_key].append(offer)
+
+    _offer_index = index
+    _offer_index_hash = h
+    return index
+
+
 def match_ingredient_to_offers(
     ingredient: Ingredient,
     offers: list[Offer],
@@ -159,7 +191,24 @@ def match_ingredient_to_offers(
     best_match: Offer | None = None
     best_score: float = 0.0
 
-    for offer in offers:
+    # Use index to narrow search when there are many offers
+    if len(offers) > 20:
+        index = _build_offer_index(offers)
+        candidate_offer_ids = set()
+        for name in candidate_names:
+            for word in normalize(name).split():
+                if len(word) >= 3 and word in index:
+                    candidate_offer_ids.update(id(o) for o in index[word])
+        # Also include same-category offers
+        cat_key = f"__cat_{ingredient.category}"
+        if cat_key in index:
+            candidate_offer_ids.update(id(o) for o in index[cat_key])
+        # If candidates found, use them; otherwise all offers
+        search_offers = [o for o in offers if id(o) in candidate_offer_ids] if candidate_offer_ids else offers
+    else:
+        search_offers = offers
+
+    for offer in search_offers:
         offer_name = normalize(offer.product_name)
         offer_words = set(offer_name.split())
 
@@ -219,13 +268,55 @@ def match_ingredient_to_offers(
     return None
 
 
+# Global match cache — cleared when offers change
+_match_cache: dict[str, Offer | None] = {}
+_match_cache_offer_hash: str = ""
+
+
+def _get_offer_hash(offers: list[Offer]) -> str:
+    return f"{len(offers)}:{offers[0].id if offers else ''}"
+
+
+def _get_cached_match(ingredient: Ingredient, offers: list[Offer]) -> tuple[bool, Offer | None]:
+    """Check cache. Returns (found_in_cache, result)."""
+    global _match_cache, _match_cache_offer_hash
+    offer_hash = _get_offer_hash(offers)
+    if offer_hash != _match_cache_offer_hash:
+        _match_cache = {}
+        _match_cache_offer_hash = offer_hash
+
+    cache_key = f"{ingredient.name}:{ingredient.category}"
+    if cache_key in _match_cache:
+        return True, _match_cache[cache_key]
+    return False, None
+
+
+def _set_cached_match(ingredient: Ingredient, result: Offer | None):
+    cache_key = f"{ingredient.name}:{ingredient.category}"
+    _match_cache[cache_key] = result
+
+
+def match_ingredient_to_offers_cached(
+    ingredient: Ingredient,
+    offers: list[Offer],
+    threshold: float = 0.55,
+) -> Offer | None:
+    """Cached version of match_ingredient_to_offers."""
+    found, cached = _get_cached_match(ingredient, offers)
+    if found:
+        return cached
+    result = match_ingredient_to_offers(ingredient, offers, threshold)
+    _set_cached_match(ingredient, result)
+    return result
+
+
 def match_recipe_to_offers(
     ingredients: list[Ingredient],
     offers: list[Offer],
 ) -> list[tuple[Ingredient, Offer | None]]:
     """Match all ingredients in a recipe to available offers."""
     return [
-        (ing, match_ingredient_to_offers(ing, offers))
+        (ing, match_ingredient_to_offers_cached(ing, offers))
         for ing in ingredients
     ]
 
@@ -238,5 +329,5 @@ def count_offer_matches(
     return sum(
         1
         for ing in ingredients
-        if not ing.is_pantry_staple and match_ingredient_to_offers(ing, offers) is not None
+        if not ing.is_pantry_staple and match_ingredient_to_offers_cached(ing, offers) is not None
     )
