@@ -20,6 +20,8 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
   const pp = scaled_servings > 0 ? Math.round(estimated_cost / scaled_servings) : 0
   const scale = scaled_servings / (recipe.servings || 4)
   const isExpanded = expanded || forceExpand
+  const chefTag = recipe.tags?.find(t => t.startsWith('kock:'))
+  const chefName = chefTag ? chefTag.slice(5) : null
 
   const fetchAlts = useCallback(async () => {
     if (alts) { setAlts(null); return }
@@ -53,6 +55,12 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
         <div className="p-4">
           <h3 className="font-bold text-base leading-snug">{recipe.title}</h3>
 
+          {chefName && (
+            <p className="text-xs font-medium mt-0.5" style={{color:'var(--color-text-secondary)'}}>
+              {chefName} <span style={{color:'var(--color-text-muted)'}}>· {recipe.source}</span>
+            </p>
+          )}
+
           <div className="flex items-center gap-2 mt-1.5 text-xs flex-wrap" style={{color:'var(--color-text-muted)'}}>
             {popularity_score > 0 && <span className="text-amber-400">{'★'.repeat(Math.round(popularity_score))} <span className="text-gray-400">{popularity_score.toFixed(1)}</span></span>}
             {recipe.cook_time_minutes <= 20 && <span className="font-semibold" style={{color:'var(--color-brand)'}}>⚡ {recipe.cook_time_minutes} min</span>}
@@ -80,20 +88,24 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
           {alts && alts.length > 0 && (
             <div className="mt-3 pt-3 space-y-1.5 expand" style={{borderTop:'1px solid var(--color-border-light)'}}>
               <p className="text-xs" style={{color:'var(--color-text-muted)'}}>Byt till:</p>
-              {alts.slice(0,3).map(alt => (
-                <button key={alt.recipe_id} onClick={e=>{e.stopPropagation();setAlts(null);onSwap(day,'',alt.recipe_id)}}
-                  className="card w-full text-left p-3 flex items-center justify-between text-sm" disabled={swapping===day}>
-                  <div>
-                    <span className="font-medium">{alt.title}</span>
-                    <div className="flex items-center gap-2 text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>
-                      {alt.rating && <span className="text-amber-400">★ {alt.rating}</span>}
-                      <span>{alt.cook_time_minutes} min</span>
-                      {alt.is_favorite && <span className="font-semibold" style={{color:'var(--color-accent)'}}>Favorit</span>}
+              {alts.slice(0,3).map(alt => {
+                const altChef = alt.tags?.find(t => t.startsWith('kock:'))
+                const altChefName = altChef ? altChef.slice(5) : null
+                return (
+                  <button key={alt.recipe_id} onClick={e=>{e.stopPropagation();setAlts(null);onSwap(day,'',alt.recipe_id)}}
+                    className="card w-full text-left p-3 flex items-center justify-between text-sm" disabled={swapping===day}>
+                    <div className="min-w-0">
+                      <span className="font-medium">{alt.title}</span>
+                      <div className="flex items-center gap-2 text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>
+                        {altChefName && <span className="font-medium" style={{color:'var(--color-text-secondary)'}}>{altChefName}</span>}
+                        {alt.rating && <span className="text-amber-400">★ {alt.rating}</span>}
+                        <span>{alt.cook_time_minutes} min</span>
+                      </div>
                     </div>
-                  </div>
-                  <span className="font-bold shrink-0 ml-2" style={{color:'var(--color-accent)'}}>{alt.price_per_portion} kr/p</span>
-                </button>
-              ))}
+                    <span className="font-bold shrink-0 ml-2" style={{color:'var(--color-accent)'}}>{alt.price_per_portion} kr/p</span>
+                  </button>
+                )
+              })}
               <button onClick={e=>{e.stopPropagation();setAlts(null)}} className="w-full text-xs py-1" style={{color:'var(--color-text-muted)'}}>Avbryt</button>
             </div>
           )}
