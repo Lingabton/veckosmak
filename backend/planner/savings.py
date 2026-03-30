@@ -114,6 +114,9 @@ def _calculate_offer_cost(amount: float, unit: str, offer: Offer) -> float:
     """Calculate cost using offer price."""
     if offer.unit == "kr/kg":
         kg = amount * WEIGHT_PER_UNIT.get(unit, 0.001)
+        # "port" typically means per-person portions (~150-200g for protein)
+        if unit == "port":
+            kg = amount * 0.175  # ~175g per portion for meat/fish
         return offer.offer_price * kg
     elif offer.unit == "kr/st" or offer.unit == "kr/förp":
         # For per-piece pricing, estimate how many retail packages needed
@@ -126,8 +129,11 @@ def _calculate_offer_cost(amount: float, unit: str, offer: Offer) -> float:
             liters = amount * WEIGHT_PER_UNIT.get(unit, 0.1)
             pieces = max(1, liters / 0.5)
             return offer.offer_price * pieces
-        elif unit in ("port", "knippe"):
-            # "4 port" = typically 1 retail package
+        elif unit == "port":
+            # "4 port torskrygg (à 140g)" = ~4 × 150g = need ~1-2 packages
+            pieces = max(1, (amount * 0.175) / 0.5)
+            return offer.offer_price * pieces
+        elif unit == "knippe":
             return offer.offer_price
         elif unit in ("msk", "tsk", "krm", "nypa"):
             return offer.offer_price  # 1 package covers any small amount
@@ -172,8 +178,9 @@ def _estimate_default_cost(amount: float, unit: str, default_price: float) -> fl
         # 1 "st" = typically one retail item, cap at reasonable per-item price
         return min(default_price, 40.0) * max(1, amount)
     elif unit == "port":
-        # "4 port pommes" = one bag of frozen fries, not 4 × full price
-        return min(default_price, 15.0)
+        # "4 port torskrygg (à 140g)" → 4 × ~175g = 0.7 kg
+        kg = amount * 0.175
+        return default_price * max(0.1, kg)
     elif unit == "knippe":
         return min(default_price, 25.0)
     elif unit in ("msk", "tsk", "krm", "nypa"):

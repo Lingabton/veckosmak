@@ -177,6 +177,35 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
               ))}
             </ol>
 
+            {/* Cost breakdown — "Så räknar vi" */}
+            {meal.cost_details?.length > 0 && (
+              <details className="mb-3">
+                <summary className="text-xs font-medium cursor-pointer" style={{color:'var(--color-text-muted)'}}>
+                  Så räknar vi — {Math.round(estimated_cost)} kr totalt
+                </summary>
+                <div className="mt-2 space-y-0.5">
+                  {meal.cost_details.map((cd, i) => (
+                    <div key={i} className="flex justify-between text-xs py-1 px-2 rounded" style={{
+                      background: cd.source === 'erbjudande' ? 'var(--color-brand-light)' : 'var(--color-bg)',
+                    }}>
+                      <span>
+                        {cd.amount > 0 && <span style={{color:'var(--color-text-muted)'}}>{cd.amount} {cd.unit} </span>}
+                        {cd.ingredient}
+                      </span>
+                      <span className="shrink-0 ml-2">
+                        <span className="font-medium">{Math.round(cd.cost)} kr</span>
+                        {cd.source === 'erbjudande' && <span className="ml-1" style={{color:'var(--color-brand)'}}>★</span>}
+                        {cd.source === 'uppskattad' && <span className="ml-1" style={{color:'var(--color-text-muted)'}}>~</span>}
+                      </span>
+                    </div>
+                  ))}
+                  <p className="text-xs mt-2 px-2" style={{color:'var(--color-text-muted)'}}>
+                    ★ = erbjudandepris · ~ = uppskattat pris
+                  </p>
+                </div>
+              </details>
+            )}
+
             {recipe.source_url && <a href={recipe.source_url} target="_blank" rel="noopener noreferrer"
               className="text-sm font-medium mb-3 inline-block" style={{color:'var(--color-brand)'}}>Originalrecept →</a>}
 

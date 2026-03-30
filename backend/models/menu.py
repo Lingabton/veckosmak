@@ -6,6 +6,13 @@ from backend.models.user_prefs import UserPreferences
 from backend.models.shopping_list import ShoppingList
 
 
+class CostDetail(BaseModel):
+    ingredient: str
+    amount: float = 0
+    unit: str = ""
+    cost: float = 0
+    source: str = ""  # "erbjudande", "uppskattad", "skafferi"
+
 class PlannedMeal(BaseModel):
     day: str
     recipe: Recipe
@@ -13,6 +20,7 @@ class PlannedMeal(BaseModel):
     offer_matches: list[Offer] = []
     estimated_cost: float = 0.0
     estimated_cost_without_offers: float = 0.0
+    cost_details: list[CostDetail] = []  # Per-ingredient cost breakdown
     reasoning: str = ""
     popularity_score: float = 0.0   # 0-5 estimated popularity
     is_fallback: bool = False       # True if generated without AI

@@ -535,6 +535,23 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
                 seen_ids.add(o.id)
                 unique_offers.append(o)
 
+        # Build per-ingredient cost breakdown for transparency
+        from backend.models.menu import CostDetail
+        from backend.planner.savings import estimate_ingredient_cost
+        cost_details = []
+        for ing in recipe.ingredients:
+            ing_offer = next((o for i, o in matches if i.name == ing.name), None)
+            cost_w, cost_wo = estimate_ingredient_cost(ing, ing_offer, servings_scale)
+            if cost_w > 0.5:  # Skip negligible items
+                source = "skafferi" if ing.is_pantry_staple else ("erbjudande" if ing_offer else "uppskattad")
+                cost_details.append(CostDetail(
+                    ingredient=ing.name,
+                    amount=round(ing.amount * servings_scale, 1),
+                    unit=ing.unit,
+                    cost=round(cost_w, 1),
+                    source=source,
+                ))
+
         meals.append(
             PlannedMeal(
                 day=day,
@@ -543,6 +560,7 @@ Inkludera mealprep-tips där det passar (t.ex. "Gör dubbelsats och frys in halv
                 offer_matches=unique_offers,
                 estimated_cost=cost_with,
                 estimated_cost_without_offers=cost_without,
+                cost_details=cost_details,
                 reasoning=reasoning,
                 popularity_score=_get_crowd_rating(recipe),
                 is_fallback=is_fallback,
