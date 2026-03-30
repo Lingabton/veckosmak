@@ -477,22 +477,90 @@ async def swap_menu_recipe(req: SwapRequest):
 
 @app.get("/api/offers/top")
 async def top_offers(store_id: str = "ica-maxi-1004097", limit: int = 12):
-    """Return all good deals — sorted by discount, then multi-buys."""
+    """Return best dinner-relevant deals — proteins first, good mix, best value.
+
+    Scoring: dinner relevance × discount × category diversity.
+    Proteins (meat, fish) get a bonus since they're the most expensive
+    part of a dinner and offer the most savings.
+    """
     raw_offers = await get_current_offers(store_id)
     offers = [_db_offer_to_model(o) for o in raw_offers]
 
+    # Categories useful for cooking dinners (not läsk, godis, toapapper)
+    DINNER_CATEGORIES = {"meat", "fish", "dairy", "produce", "pantry", "frozen"}
+    # Non-food keywords to filter out
+    NON_DINNER = [
+        "läsk", "coca", "pepsi", "fanta", "sprite", "godis", "chips", "snacks",
+        "toapapper", "hushållspapper", "tvättmedel", "diskmedel", "schampo",
+        "tandkräm", "blöja", "servett", "kaffe", "te ", "glass", "saft",
+        "juice", "öl", "vin", "cider", "energidryck", "tuggummi",
+    ]
+
     scored = []
     for o in offers:
+        name_lower = o.product_name.lower()
+
+        # Skip non-dinner items
+        if any(nd in name_lower for nd in NON_DINNER):
+            continue
+
+        # Skip non-food categories (unless they're actually food in "other")
+        if o.category == "other" and o.category not in DINNER_CATEGORIES:
+            # Allow "other" if it looks like food
+            food_hints = ["grädde", "ägg", "tomat", "sås", "buljong", "krydda",
+                          "olja", "vinäger", "senap", "ketchup"]
+            if not any(h in name_lower for h in food_hints):
+                continue
+
         discount = 0
         if o.original_price and o.original_price > 0:
             discount = (1 - o.offer_price / o.original_price) * 100
-        # Include everything with a discount OR a multi-buy deal
-        if discount > 5 or o.quantity_deal:
-            scored.append((o, max(discount, 10 if o.quantity_deal else 0)))
+        if discount < 3 and not o.quantity_deal:
+            continue
+
+        # Score: base discount + dinner relevance bonus
+        score = max(discount, 8 if o.quantity_deal else 0)
+
+        # Protein bonus — meat & fish are the expensive part of dinner
+        if o.category == "meat":
+            score += 15
+        elif o.category == "fish":
+            score += 12
+        # Other dinner essentials
+        elif o.category == "dairy":
+            score += 5
+        elif o.category == "produce":
+            score += 5
+
+        scored.append((o, score, discount))
 
     scored.sort(key=lambda x: -x[1])
-    top = [{**o.model_dump(), "discount": round(d)} for o, d in scored[:limit]]
-    return {"offers": top, "count": len(top), "total_available": len(offers)}
+
+    # Pick top items but ensure category diversity
+    # Goal: at least 2 proteins, 1 dairy, 1 produce in the top results
+    selected = []
+    cat_counts = {}
+    MAX_PER_CAT = 4  # Don't show 8 meat items
+
+    for o, score, discount in scored:
+        cat = o.category
+        if cat_counts.get(cat, 0) >= MAX_PER_CAT:
+            continue
+        selected.append({**o.model_dump(), "discount": round(discount)})
+        cat_counts[cat] = cat_counts.get(cat, 0) + 1
+        if len(selected) >= limit:
+            break
+
+    # If we didn't fill up, add more without category limit
+    if len(selected) < limit:
+        selected_ids = {s["id"] for s in selected}
+        for o, score, discount in scored:
+            if o.id not in selected_ids:
+                selected.append({**o.model_dump(), "discount": round(discount)})
+                if len(selected) >= limit:
+                    break
+
+    return {"offers": selected, "count": len(selected), "total_available": len(offers)}
 
 
 @app.get("/api/offers/all")

@@ -51,7 +51,7 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
         Välj de erbjudanden du vill bygga menyn kring. Vi matchar recept som använder dem.
       </p>
       <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>
-        {offers.length} erbjudanden · Sorterade efter bäst rabatt · Tryck för att välja
+        {offers.length} erbjudanden · Sorterade efter middagsnytta · Tryck för att välja
       </p>
 
       {/* Category filter tabs */}
@@ -96,7 +96,11 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
                     <p className="text-lg font-bold" style={{ color: 'var(--color-accent)' }}>
                       {Math.round(offer.offer_price)} <span className="text-xs font-normal">{offer.unit}</span>
                     </p>
-                    {discount > 0 && <p className="text-xs font-bold" style={{ color: 'var(--color-brand)' }}>−{discount}%</p>}
+                    {discount > 0 ? (
+                      <p className="text-xs font-bold" style={{ color: 'var(--color-brand)' }}>−{discount}%</p>
+                    ) : (
+                      <p className="text-xs font-medium" style={{ color: 'var(--color-brand)' }}>Veckans pris</p>
+                    )}
                     {offer.original_price && (
                       <p className="text-xs line-through" style={{ color: 'var(--color-text-muted)' }}>{Math.round(offer.original_price)}</p>
                     )}
@@ -110,7 +114,7 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
                 {i === 0 && !isPinned && filter === 'all' && (
                   <div className="mt-2 text-xs font-medium px-2 py-0.5 rounded-full inline-block"
                     style={{ background: 'var(--color-accent-light)', color: 'var(--color-accent)' }}>
-                    Bästa rabatten
+                    Bästa middagskörp
                   </div>
                 )}
               </button>
