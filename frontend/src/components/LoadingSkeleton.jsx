@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react'
 
-const STEPS = ['Ansluter...','Hämtar erbjudanden...','Matchar recept...','Optimerar din meny...','Nästan klart...']
+const STEPS = ['Ansluter...','Hämtar erbjudanden...','Matchar 1300+ recept...','Optimerar din meny...','Snart klar — vi letar bästa kombinationen...']
 
 export default function LoadingSkeleton() {
   const [step, setStep] = useState(0)
   useEffect(() => {
-    const t = [setTimeout(()=>setStep(1),3000),setTimeout(()=>setStep(2),8000),setTimeout(()=>setStep(3),15000),setTimeout(()=>setStep(4),25000)]
+    const t = [
+      setTimeout(()=>setStep(1), 3000),
+      setTimeout(()=>setStep(2), 10000),
+      setTimeout(()=>setStep(3), 25000),
+      setTimeout(()=>setStep(4), 45000),
+    ]
     return () => t.forEach(clearTimeout)
   }, [])
 

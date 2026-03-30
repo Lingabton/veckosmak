@@ -214,7 +214,7 @@ export function useMenu() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(preferences),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(120000),
       })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
