@@ -679,6 +679,21 @@ async def list_stores():
     return {"stores": get_all_store_registries()}
 
 
+@app.get("/api/stores/leaflet")
+async def store_leaflet_redirect(store_id: str = ""):
+    """Redirect to the store's offer/leaflet page."""
+    from fastapi.responses import RedirectResponse
+    all_stores = get_all_store_registries()
+    store = all_stores.get(store_id, {})
+    url = store.get("url", "")
+    if url:
+        return RedirectResponse(url=url)
+    # Fallback
+    if store_id.startswith("willys"):
+        return RedirectResponse(url="https://www.willys.se/erbjudanden")
+    return RedirectResponse(url="https://www.ica.se/erbjudanden/")
+
+
 # --- User profile & account endpoints ---
 
 class ProfileUpdateRequest(BaseModel):
