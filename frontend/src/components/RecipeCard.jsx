@@ -20,8 +20,19 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
   const pp = scaled_servings > 0 ? Math.round(estimated_cost / scaled_servings) : 0
   const scale = scaled_servings / (recipe.servings || 4)
   const isExpanded = expanded || forceExpand
+  // Only show well-known chefs (not "Torbjörn - Arvika")
+  const KNOWN_CHEFS = new Set([
+    'Per Morberg','Johan Jureskog','Leila Lindholm','Tommy Myllymäki',
+    'Tina Nordström','Jamie Oliver','Markus Aujalay','Niklas Ekstedt',
+    'Lisa Lemke','Ernst Kirchsteiger','Mathias Dahlgren','Leif Mannerström',
+    'Paul Svensson','Marcus Samuelsson','Filip Fastén','Gert Klötzke',
+    'Christian Hellberg','Alexandra Zazzi','Pernilla Wahlgren','Lotta Lundgren',
+    'Nigella Lawson','Pontus Frithiof','Danyel Couet','Magnus Ek',
+    'Camilla Läckberg','Kocklandslaget',
+  ])
   const chefTag = recipe.tags?.find(t => t.startsWith('kock:'))
-  const chefName = chefTag ? chefTag.slice(5) : null
+  const rawChefName = chefTag ? chefTag.slice(5) : null
+  const chefName = rawChefName && KNOWN_CHEFS.has(rawChefName) ? rawChefName : null
 
   const fetchAlts = useCallback(async () => {
     if (alts) { setAlts(null); return }
@@ -90,7 +101,8 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
               <p className="text-xs" style={{color:'var(--color-text-muted)'}}>Byt till:</p>
               {alts.slice(0,3).map(alt => {
                 const altChef = alt.tags?.find(t => t.startsWith('kock:'))
-                const altChefName = altChef ? altChef.slice(5) : null
+                const altRawChef = altChef ? altChef.slice(5) : null
+                const altChefName = altRawChef && KNOWN_CHEFS.has(altRawChef) ? altRawChef : null
                 return (
                   <button key={alt.recipe_id} onClick={e=>{e.stopPropagation();setAlts(null);onSwap(day,'',alt.recipe_id)}}
                     className="card w-full text-left p-3 flex items-center justify-between text-sm" disabled={swapping===day}>

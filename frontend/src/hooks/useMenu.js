@@ -103,6 +103,11 @@ export function useMenu() {
   const [swapping, setSwapping] = useState(null)
   const [error, setError] = useState(null)
   useEffect(() => { setError(null) }, [])
+
+  // Wake up Render backend on page load to avoid cold start delay
+  useEffect(() => {
+    fetch('/api/health').catch(() => {})
+  }, [])
   const [copySuccess, setCopySuccess] = useState(false)
   const [expandAll, setExpandAll] = useState(false)
   const [isReturning] = useState(() => !!localStorage.getItem(STORAGE_KEY))
