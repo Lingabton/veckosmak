@@ -94,7 +94,7 @@ function App() {
       <footer className="no-print" style={{ borderTop: '1px solid var(--color-border-light)' }}>
         <div className="max-w-2xl mx-auto px-5 py-4 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
           <span><b style={{ color: 'var(--color-text-secondary)' }}>veckosmak</b> — gratis menyplanering</span>
-          <span>ICA · Willys · 350+ recept · {new Date().getFullYear()}</span>
+          <span>ICA · Willys · 580+ recept · {new Date().getFullYear()}</span>
         </div>
       </footer>
     </div>
