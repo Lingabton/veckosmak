@@ -41,12 +41,17 @@ function StoreSelector({ preferences, update }) {
 
   return (
     <div className="mb-5">
-      <button onClick={()=>setOpen(!open)} className="card w-full text-left px-4 py-3 flex items-center justify-between">
+      <button onClick={()=>setOpen(!open)} className="card w-full text-left px-5 py-4 flex items-center justify-between" style={{
+        borderLeft: '4px solid var(--color-brand)',
+      }}>
         <div>
-          <p className="text-sm font-medium">ICA {type} {cur?.city||'Örebro Boglundsängen'}</p>
-          {cur?.address && <p className="text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>{cur.address}</p>}
+          <p className="text-[11px] uppercase tracking-widest font-medium mb-1" style={{color:'var(--color-text-muted)'}}>Din butik</p>
+          <p className="text-base font-bold">{cur?.name || 'Välj din butik'}</p>
+          <p className="text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>
+            {cur ? `${cur.city} · Menyn byggs från denna butiks erbjudanden` : 'Vi hämtar erbjudanden från butiken du väljer'}
+          </p>
         </div>
-        <span className="text-sm" style={{color:'var(--color-text-muted)'}}>{open?'▲':'Byt butik'}</span>
+        <span className="text-sm font-medium" style={{color:'var(--color-brand)'}}>{open ? '▲' : 'Byt butik'}</span>
       </button>
       {open && (
         <div className="card mt-2 overflow-hidden expand">
@@ -54,7 +59,7 @@ function StoreSelector({ preferences, update }) {
             className="w-full px-4 py-3 text-sm border-b outline-none" style={{borderColor:'var(--color-border-light)',background:'var(--color-bg)'}} />
           <div className="max-h-[60vh] overflow-y-auto">
             {!stores && <p className="px-4 py-3 text-xs" style={{color:'var(--color-text-muted)'}}>Laddar butiker...</p>}
-            {stores && !search && <p className="px-4 py-2 text-xs" style={{color:'var(--color-text-muted)'}}>1100+ butiker — sök din stad</p>}
+            {stores && !search && <p className="px-4 py-2 text-xs" style={{color:'var(--color-text-muted)'}}>1 300+ butiker — sök din stad</p>}
             {filtered.slice(0,25).map(([id,s])=>(
               <button key={id} onClick={()=>{update('store_id',id);setOpen(false);setSearch('')}}
                 className="w-full text-left px-4 py-2.5 border-b hover:bg-gray-50 transition-colors"

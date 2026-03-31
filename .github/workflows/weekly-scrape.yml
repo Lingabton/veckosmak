@@ -1,0 +1,17 @@
+name: Weekly Scrape
+
+on:
+  schedule:
+    # Every Monday at 05:00 UTC (07:00 CET)
+    - cron: '0 5 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scrape
+        run: |
+          curl -s -X POST "https://veckosmak-api.onrender.com/api/cron/scrape?key=${{ secrets.CRON_SECRET }}" || true
+          sleep 5
+          curl -s -X POST "https://veckosmak-api.onrender.com/api/cron/scrape-all?key=${{ secrets.CRON_SECRET }}&types=maxi&batch_size=10" || true

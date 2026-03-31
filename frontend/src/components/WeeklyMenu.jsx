@@ -29,12 +29,15 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
 
       <div className="mb-5">
         <h1 className="font-display text-3xl font-bold" style={{ letterSpacing: '-0.03em' }}>Din veckomeny</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          {menu.date_range || `Vecka ${menu.week_number}`} — {menu.store_name || 'ICA'}
+        <p className="text-sm mt-1 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
+          <span className="text-xs font-medium px-2 py-0.5 rounded" style={{background:'var(--color-brand-light)',color:'var(--color-brand-dark)'}}>
+            {menu.store_name || 'ICA'}
+          </span>
+          <span>{menu.date_range || `Vecka ${menu.week_number}`}</span>
           {menu.store_id && (
             <a href={`/api/stores/leaflet?store_id=${menu.store_id}`} target="_blank" rel="noopener noreferrer"
-              className="ml-2 font-medium" style={{ color: 'var(--color-brand)' }}>
-              Se alla erbjudanden
+              className="font-medium" style={{ color: 'var(--color-brand)' }}>
+              Se erbjudanden
             </a>
           )}
         </p>

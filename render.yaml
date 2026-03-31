@@ -1,3 +1,8 @@
+# Cron options (paid plan required for Render cron jobs):
+#   - Render cron: add type: cron services below
+#   - GitHub Actions: .github/workflows/weekly-scrape.yml (free, triggers API endpoint)
+#   - External: cron-job.org calling POST /api/cron/scrape-all?key=CRON_SECRET
+
 services:
   - type: web
     name: veckosmak-api
