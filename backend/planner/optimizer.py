@@ -713,6 +713,23 @@ Föreslå ETT alternativt recept."""
     )
     offer_matches = list({o.id: o for _, o in matches if o}.values())
 
+    # Build cost breakdown for transparency
+    from backend.models.menu import CostDetail
+    from backend.planner.savings import estimate_ingredient_cost
+    cost_details = []
+    for ing in recipe.ingredients:
+        ing_offer = next((o for i, o in matches if i.name == ing.name), None)
+        cost_w, _ = estimate_ingredient_cost(ing, ing_offer, servings_scale)
+        if cost_w > 0.5:
+            source = "skafferi" if ing.is_pantry_staple else ("erbjudande" if ing_offer else "uppskattad")
+            cost_details.append(CostDetail(
+                ingredient=ing.name,
+                amount=round(ing.amount * servings_scale, 1),
+                unit=ing.unit,
+                cost=round(cost_w, 1),
+                source=source,
+            ))
+
     return PlannedMeal(
         day=day,
         recipe=recipe,
@@ -720,6 +737,7 @@ Föreslå ETT alternativt recept."""
         offer_matches=offer_matches,
         estimated_cost=cost_with,
         estimated_cost_without_offers=cost_without,
+        cost_details=cost_details,
         reasoning=reasoning,
         popularity_score=_get_crowd_rating(recipe),
     )

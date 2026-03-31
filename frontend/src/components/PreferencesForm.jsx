@@ -120,7 +120,7 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
 
       {/* === SECTION 1: Hero === */}
       <section className="-mx-5 -mt-8 px-5 pt-16 pb-12 mb-12 rounded-b-3xl" style={{
-        background: 'radial-gradient(ellipse at 50% 30%, #1a5c35 0%, var(--color-brand-dark) 70%)',
+        background: 'radial-gradient(ellipse at 50% 20%, #2d8a56 0%, #1a5c35 60%, var(--color-brand-dark) 100%)',
       }}>
         <h1 className="font-display text-4xl sm:text-5xl font-bold leading-[1.1] mb-5 text-white" style={{ letterSpacing: '-0.03em' }}>
           Från erbjudande till{' '}
@@ -134,7 +134,7 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
           Bygg veckans meny från butikens riktiga kampanjer. Recept, inköpslista och besparing — klar direkt.
         </p>
         <div className="flex flex-wrap items-center gap-3 mt-8">
-          {['Butiksspecifika erbjudanden','Färdig inköpslista','600+ recept'].map(pill => (
+          {['Butiksspecifika erbjudanden','Färdig inköpslista','1300+ recept'].map(pill => (
             <span key={pill} className="text-sm px-4 py-2 rounded-full text-white" style={{
               background: 'rgba(255,255,255,0.1)',
               backdropFilter: 'blur(8px)',
