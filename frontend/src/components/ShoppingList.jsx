@@ -125,6 +125,15 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
         )}
       </div>
 
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-[10px] mb-4 px-1" style={{color:'var(--color-text-muted)'}}>
+        <span className="flex items-center gap-1">
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium" style={{backgroundColor:'var(--green-soft)',color:'var(--green)'}}>●</span>
+          På kampanj
+        </span>
+        <span>~ = uppskattat pris</span>
+      </div>
+
       <div className="space-y-6">
         {CATEGORY_ORDER.map(cat => {
           const catItems = grouped[cat]
@@ -145,14 +154,14 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
                   const isChecked = !!checked[item.ingredient_name]
                   return (
                     <div key={i} onClick={() => toggle(item.ingredient_name)}
-                      className={`flex items-center gap-3 py-3 px-3.5 cursor-pointer transition-all ${
+                      className={`flex items-center gap-3 py-4 px-4 cursor-pointer transition-all ${
                         i > 0 ? 'border-t' : ''
                       } ${isChecked ? 'opacity-35' : ''}`}
                       style={{
                         backgroundColor: isChecked ? 'var(--bg)' : 'var(--surface)',
                         borderColor: 'var(--border-light)',
                       }}>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                      <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                         isChecked ? 'border-green-600 bg-green-600' : ''
                       }`} style={!isChecked ? { borderColor: 'var(--border)' } : {}}>
                         {isChecked && <span className="text-white text-xs">✓</span>}
@@ -179,10 +188,10 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
                         {item.is_on_offer && (
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full"
                             style={{ backgroundColor: 'var(--green-soft)', color: 'var(--green)' }}>
-                            {item.matched_offer ? `${Math.round(item.matched_offer.offer_price)} ${item.matched_offer.unit}` : 'Erbjudande'}
+                            {'På kampanj'}
                           </span>
                         )}
-                        {item.estimated_price > 0 && <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>~{Math.round(item.estimated_price)} kr</span>}
+                        {item.estimated_price > 0 && <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Cirka {Math.round(item.estimated_price)} kr</span>}
                         {item.category === 'custom' && (
                           <button onClick={e => { e.stopPropagation(); removeCustom(item.ingredient_name) }}
                             className="text-xs px-1.5" style={{ color: 'var(--color-text-muted)' }}>✕</button>

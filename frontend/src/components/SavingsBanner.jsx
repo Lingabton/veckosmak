@@ -51,7 +51,7 @@ export default function SavingsBanner({ menu }) {
           {total_savings > 0 ? (
             <div className="text-right">
               <p className="text-[11px] uppercase tracking-widest font-medium mb-1" style={{ color: 'var(--color-text-muted)' }}>
-                Du sparar
+                Beräknad besparing
               </p>
               <p className="font-display text-3xl font-bold" style={{
                 background: 'linear-gradient(135deg, #16a34a, #059669)',
@@ -60,14 +60,15 @@ export default function SavingsBanner({ menu }) {
                 backgroundClip: 'text',
                 lineHeight: 1.1,
               }}>
-                −{Math.round(total_savings)} kr
+                {Math.round(total_savings)} kr
               </p>
               <p className="text-xs font-semibold mt-1 px-2 py-0.5 rounded-full inline-block" style={{
                 background: 'rgba(22,163,74,0.08)',
                 color: '#16a34a',
               }}>
-                {Math.round(savings_percentage)}% billigare
+                {Math.round(savings_percentage)} % billigare
               </p>
+              <p className="text-[10px] mt-1.5" style={{color:'var(--color-text-muted)'}}>jämfört med ordinarie pris</p>
             </div>
           ) : (
             <div className="text-right">

@@ -143,6 +143,12 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
             }}>{pill}</span>
           ))}
         </div>
+        <button onClick={generateMenu} className="btn btn-primary mt-8 text-lg px-8 py-4">
+          Skapa min veckomeny
+        </button>
+        <p className="text-xs mt-3" style={{color:'rgba(255,255,255,0.45)'}}>
+          Tar cirka 30 sekunder · Gratis · Ingen inloggning krävs
+        </p>
       </section>
 
       {/* Saved menu + savings tracker */}
@@ -160,8 +166,8 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
             </div>
             {totalSavings > 0 && (
               <div className="text-right">
-                <p className="text-xs" style={{color:'rgba(255,255,255,0.5)'}}>Totalt sparat</p>
-                <p className="font-display text-3xl font-bold" style={{color:'var(--color-gold)'}}>{Math.round(totalSavings)} kr</p>
+                <p className="text-xs" style={{color:'rgba(255,255,255,0.5)'}}>Totalt sparat jmf. ord. pris</p>
+                <p className="font-display text-3xl font-bold" style={{color:'var(--color-gold)'}}>Du sparar {Math.round(totalSavings)} kr</p>
               </div>
             )}
           </div>
@@ -315,6 +321,17 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
 
       {/* Email signup */}
       <EmailSignup context="home" />
+
+      {/* Social proof */}
+      <section className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm py-6 mb-8 rounded-xl" style={{
+        background: 'var(--color-bg)', color: 'var(--color-text-muted)',
+        border: '1px solid var(--color-border-light)',
+      }}>
+        <span><b style={{color:'var(--color-text)'}}>1 286</b> butiker</span>
+        <span><b style={{color:'var(--color-text)'}}>1 352</b> recept</span>
+        <span><b style={{color:'var(--color-text)'}}>3</b> receptkällor</span>
+        <span>Helt gratis</span>
+      </section>
 
       {/* SEO */}
       <section className="space-y-4 text-sm" style={{color:'var(--color-text-muted)'}}>

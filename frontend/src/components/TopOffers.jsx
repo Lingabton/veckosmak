@@ -51,7 +51,7 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
         Välj de erbjudanden du vill bygga menyn kring. Vi matchar recept som använder dem.
       </p>
       <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>
-        {offers.length} erbjudanden · Sorterade efter middagsnytta · Tryck för att välja
+        {offers.length} erbjudanden · Sorterat efter middagsnytta — kött och fisk först · Tryck för att välja
       </p>
 
       {/* Category filter tabs */}
@@ -104,6 +104,14 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
                     {offer.original_price && (
                       <p className="text-xs line-through" style={{ color: 'var(--color-text-muted)' }}>{Math.round(offer.original_price)}</p>
                     )}
+                    {/* Middagsnytta-signal */}
+                    {offer.category === 'meat' || offer.category === 'fish' ? (
+                      <p className="text-[10px] font-medium mt-0.5" style={{color:'var(--color-text-muted)'}}>Bra huvudingrediens</p>
+                    ) : offer.category === 'dairy' ? (
+                      <p className="text-[10px] font-medium mt-0.5" style={{color:'var(--color-text-muted)'}}>Bra basvara</p>
+                    ) : offer.category === 'produce' ? (
+                      <p className="text-[10px] font-medium mt-0.5" style={{color:'var(--color-text-muted)'}}>Bra tillbehör</p>
+                    ) : null}
                   </div>
                 </div>
                 {isPinned && (
@@ -114,7 +122,7 @@ export default function TopOffers({ offers, preferences, setPreferences, onGener
                 {i === 0 && !isPinned && filter === 'all' && (
                   <div className="mt-2 text-xs font-medium px-2 py-0.5 rounded-full inline-block"
                     style={{ background: 'var(--color-accent-light)', color: 'var(--color-accent)' }}>
-                    Bästa middagskörp
+                    Bäst middagsköp denna vecka
                   </div>
                 )}
               </button>

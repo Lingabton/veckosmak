@@ -815,3 +815,76 @@ En MVP är klar när en testfamilj kan:
 7. ✅ Se hur mycket de sparar jämfört med ordinarie pris
 
 Allt utöver detta är Fas 2+.
+
+---
+
+## Produktriktning (2026-03-31)
+
+### Position
+**Från erbjudande till riktig middag**
+
+### Grundprincip
+Allt ska bedömas utifrån: *Hjälper detta användaren att förstå hur erbjudanden blir till riktiga middagar, tydlig veckokostnad och färdig inköpslista?* Om nej: inte prioritet.
+
+### Produkten ska signalera
+- Erbjudanden som motor
+- Middagar som output
+- Veckokostnad som beslutsstöd
+- Inköpslista som handling
+- Besparing som trovärdig effekt
+
+### Produkten ska INTE glida mot
+- Allmän receptsajt
+- Fluffig AI-meal-planner
+- Inspirationsapp utan tydlig ekonomi
+
+### Ekonomi-copy — regler
+- ALDRIG "Du sparar -73 kr" (minus framför sparande)
+- Besparing ska ALLTID ha förklaring: "jämfört med ordinarie pris"
+- Konsekvent terminologi överallt: "Uppskattad veckokostnad", "Beräknad besparing", "Pris per portion"
+- Ungefärliga belopp: "Cirka 377 kr"
+- Procent: "16 % billigare"
+
+### Ingrediensprislogik — tre typer
+1. **Kampanjvara** — grön markering + "på kampanj"
+2. **Uppskattad kostnad** — "~3 kr"
+3. **Neutral ingrediens** — ingen markering
+
+### "Varför detta recept" — ska vara konkret
+Inte "Automatiskt vald baserat på erbjudanden". Utan:
+- "3 huvudingredienser på kampanj"
+- "Låg kostnad per portion denna vecka"
+- "Använder erbjudanden från din butik"
+
+### CTA i hero
+- En tydlig primär CTA: "Skapa min veckomeny"
+- Under knappen: "Tar cirka 30 sekunder · Gratis · Ingen inloggning"
+
+### Byt-funktionen
+Alternativ ska visa: pris/portion, tid, betyg, antal erbjudanden, om billigare/dyrare
+Ska kännas smart, inte slumpmässigt.
+
+### Inköpslistan
+Optimerad för butik: stor checkzon, tydlig radseparering, lite visuellt brus.
+Ska kunna användas med en hand i butik.
+
+### P1 (fixa nu)
+1. Förklara besparingen tydligt
+2. Rätta all ekonomi-copy
+3. Tydligare CTA i hero
+4. Stärk "Varför detta recept"
+5. Tydliggör prislogik i ingredienslistan
+6. Gör erbjudandesidan mer nyttig
+7. Förbättra byt-funktionen
+8. Förenkla inköpslistan för butik
+
+### P2 (efter P1)
+9. Förbättra mobil-header
+10. Mer proof på startsidan
+11. Skärp spara-copy
+12. Butiksväljaren starkare
+
+### P3 (planera, bygg inte ännu)
+13. Sparad profil
+14. Historik/tidigare veckor
+15. Ta bort halvfärdiga element

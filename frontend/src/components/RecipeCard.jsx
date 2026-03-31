@@ -172,7 +172,7 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
                   background: 'rgba(22,163,74,0.08)',
                   color: '#16a34a',
                 }}>
-                  −{Math.round(savings)} kr
+                  Sparar {Math.round(savings)} kr
                 </span>
               )}
             </div>
@@ -246,17 +246,32 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
                   >
                     <div className="min-w-0">
                       <span className="font-semibold text-sm">{alt.title}</span>
-                      <div className="flex items-center gap-2 text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                      <div className="flex items-center gap-2 text-[11px] mt-1 flex-wrap" style={{ color: 'var(--color-text-muted)' }}>
                         {altChefName && (
                           <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>{altChefName}</span>
                         )}
                         {alt.rating && <span className="text-amber-400">★ {alt.rating}</span>}
                         <span>{alt.cook_time_minutes} min</span>
+                        {alt.offer_matches > 0 && (
+                          <span style={{color:'var(--color-brand)'}}>{alt.offer_matches} erbjudanden</span>
+                        )}
                       </div>
                     </div>
-                    <span className="font-display font-bold text-sm shrink-0 ml-3" style={{ color: 'var(--color-accent)' }}>
-                      {alt.price_per_portion} kr/p
-                    </span>
+                    <div className="text-right shrink-0 ml-3">
+                      <span className="font-display font-bold text-sm" style={{ color: 'var(--color-accent)' }}>
+                        {alt.price_per_portion} kr/port
+                      </span>
+                      {alt.estimated_cost && pp > 0 && alt.price_per_portion < pp && (
+                        <p className="text-[10px] font-medium" style={{color:'#16a34a'}}>
+                          {pp - alt.price_per_portion} kr billigare
+                        </p>
+                      )}
+                      {alt.estimated_cost && pp > 0 && alt.price_per_portion > pp && (
+                        <p className="text-[10px]" style={{color:'var(--color-text-muted)'}}>
+                          +{alt.price_per_portion - pp} kr dyrare
+                        </p>
+                      )}
+                    </div>
                   </button>
                 )
               })}
@@ -286,6 +301,19 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
                 <span className="font-semibold" style={{ color: 'var(--color-brand)' }}>Varför detta recept</span>
                 <span className="mx-1.5" style={{ color: 'var(--color-border)' }}>|</span>
                 {reasoning}
+              </div>
+            )}
+            {(!reasoning || reasoning.includes('Automatiskt vald')) && (
+              <div className="text-xs leading-relaxed p-3.5 rounded-xl mb-4" style={{
+                background: 'var(--color-bg)', color: 'var(--color-text-secondary)',
+                borderLeft: '3px solid var(--color-brand)',
+              }}>
+                <span className="font-semibold" style={{color:'var(--color-brand)'}}>Varför detta recept</span>
+                <span className="mx-1.5" style={{color:'var(--color-border)'}}>|</span>
+                {offer_matches?.length > 0
+                  ? `${offer_matches.length} ingrediens${offer_matches.length > 1 ? 'er' : ''} på kampanj från din butik. Pris per portion: ${pp} kr.`
+                  : `Populärt recept med betyg ${popularity_score > 0 ? popularity_score.toFixed(1) + '/5' : 'från ica.se'}. Pris per portion: cirka ${pp} kr.`
+                }
               </div>
             )}
 
@@ -445,9 +473,9 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
                   }}>
                     <span className="flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: '#16a34a' }} />
-                      erbjudandepris
+                      på kampanj
                     </span>
-                    <span>~ uppskattat pris</span>
+                    <span>~ uppskattad kostnad</span>
                   </div>
                 </div>
               </details>

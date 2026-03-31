@@ -35,7 +35,7 @@ function App() {
           background: 'linear-gradient(90deg, transparent, rgba(232,245,233,0.15), transparent)',
         }} />
 
-        <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between relative z-10">
+        <div className="max-w-2xl mx-auto px-5 py-3 flex items-center justify-between relative z-10">
           <a href="/" onClick={(e) => { e.preventDefault(); setView(menu ? 'menu' : 'preferences') }}
             className="flex items-center gap-2.5 text-white hover:opacity-90 transition-opacity group">
             <span className="text-xl opacity-60 group-hover:opacity-90 transition-opacity" style={{ filter: 'drop-shadow(0 0 6px rgba(232,245,233,0.3))' }}>&#10043;</span>
@@ -49,9 +49,9 @@ function App() {
           <div className="flex items-center gap-1.5">
             {menu && (
               <nav className="flex gap-1 p-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)' }}>
-                {[['preferences', 'Ny meny'], ['menu', 'Meny'], ['shopping', 'Inkop']].map(([v, label]) => (
+                {[['preferences', 'Ny meny'], ['menu', 'Meny'], ['shopping', 'Lista']].map(([v, label]) => (
                   <button key={v} onClick={() => setView(v)}
-                    className="relative px-4 py-1.5 rounded-full text-sm font-medium transition-all"
+                    className="relative px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all"
                     style={{
                       background: view === v ? 'rgba(255,255,255,0.15)' : 'transparent',
                       color: view === v ? '#ffffff' : 'rgba(187,227,197,0.7)',
