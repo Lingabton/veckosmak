@@ -119,45 +119,65 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
     <div className="fade-up">
 
       {/* === SECTION 1: Hero === */}
-      <section className="mb-12">
-        <h1 className="font-display text-4xl sm:text-5xl font-bold leading-[1.1] mb-5" style={{ letterSpacing: '-0.03em' }}>
-          Från erbjudande<br/>till <span className="font-display italic" style={{color:'var(--color-accent)'}}>riktig middag</span>
+      <section className="-mx-5 -mt-8 px-5 pt-16 pb-12 mb-12 rounded-b-3xl" style={{
+        background: 'radial-gradient(ellipse at 50% 30%, #1a5c35 0%, var(--color-brand-dark) 70%)',
+      }}>
+        <h1 className="font-display text-4xl sm:text-5xl font-bold leading-[1.1] mb-5 text-white" style={{ letterSpacing: '-0.03em' }}>
+          Från erbjudande till{' '}
+          <span className="font-display italic" style={{
+            background: 'linear-gradient(135deg, var(--color-accent), var(--color-gold))',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>riktig middag</span>
         </h1>
-        <p className="text-lg leading-relaxed max-w-md" style={{color:'var(--color-text-secondary)'}}>
+        <p className="text-lg leading-relaxed max-w-md" style={{color:'rgba(255,255,255,0.7)'}}>
           Bygg veckans meny från butikens riktiga kampanjer. Recept, inköpslista och besparing — klar direkt.
         </p>
-        <div className="flex items-center gap-4 mt-6 text-sm" style={{color:'var(--color-text-muted)'}}>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full" style={{background:'var(--color-brand)'}} />
-            Butiksspecifika erbjudanden
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full" style={{background:'var(--color-accent)'}} />
-            Färdig inköpslista
-          </span>
+        <div className="flex flex-wrap items-center gap-3 mt-8">
+          {['Butiksspecifika erbjudanden','Färdig inköpslista','600+ recept'].map(pill => (
+            <span key={pill} className="text-sm px-4 py-2 rounded-full text-white" style={{
+              background: 'rgba(255,255,255,0.1)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.15)',
+            }}>{pill}</span>
+          ))}
         </div>
       </section>
 
       {/* Saved menu + savings tracker */}
       {menu && (
-        <div className="card p-5 mb-6 fade-in">
-          <div className="flex items-start justify-between mb-3">
+        <div className="rounded-2xl p-6 mb-6 fade-in" style={{
+          background: 'var(--color-brand-dark)',
+          color: 'white',
+        }}>
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="font-bold">Din veckomeny</p>
-              <p className="text-sm" style={{color:'var(--color-text-muted)'}}>
+              <p className="font-bold text-white">Din veckomeny</p>
+              <p className="text-sm" style={{color:'rgba(255,255,255,0.6)'}}>
                 {menu.store_name||'ICA'} · {menu.meals?.length} middagar · ~{Math.round(menu.total_cost)} kr
               </p>
             </div>
             {totalSavings > 0 && (
               <div className="text-right">
-                <p className="text-xs" style={{color:'var(--color-text-muted)'}}>Totalt sparat</p>
-                <p className="font-bold" style={{color:'var(--color-brand)'}}>{Math.round(totalSavings)} kr</p>
+                <p className="text-xs" style={{color:'rgba(255,255,255,0.5)'}}>Totalt sparat</p>
+                <p className="font-display text-3xl font-bold" style={{color:'var(--color-gold)'}}>{Math.round(totalSavings)} kr</p>
               </div>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={()=>setView('shopping')} className="btn btn-primary flex-1 py-3">Inköpslista</button>
-            <button onClick={()=>setView('menu')} className="btn btn-secondary flex-1 py-3">Visa meny</button>
+            <button onClick={()=>setView('shopping')} className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors" style={{
+              background: 'rgba(255,255,255,0.15)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.2)',
+            }}>Inköpslista</button>
+            <button onClick={()=>setView('menu')} className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors" style={{
+              background: 'transparent',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.3)',
+            }}>Visa meny</button>
           </div>
         </div>
       )}
@@ -165,21 +185,20 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
       {/* Product mockup */}
       {!menu && <ProductPreview />}
 
-      {/* === SECTION 2: Så funkar det — stacked, left-aligned === */}
+      {/* === SECTION 2: Så funkar det === */}
       <section className="mb-10">
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 relative">
+          {/* Connecting line on desktop */}
+          <div className="hidden sm:block absolute top-6 left-[16.67%] right-[16.67%] h-px" style={{background:'var(--color-border)'}} />
           {[
-            {n:'1',t:'Vi läser erbjudanden',d:'Från din valda butik — ICA eller Willys'},
-            {n:'2',t:'Vi bygger middagar',d:'Anpassat till ditt hushåll och kostpreferenser'},
-            {n:'3',t:'Du får veckan klar',d:'Meny, recept och inköpslista direkt'},
+            {n:'1',t:'Vi läser erbjudanden',d:'Från din valda butik — ICA eller Willys',color:'var(--color-brand)'},
+            {n:'2',t:'Vi bygger middagar',d:'Anpassat till ditt hushåll och kostpreferenser',color:'var(--color-accent)'},
+            {n:'3',t:'Du får veckan klar',d:'Meny, recept och inköpslista direkt',color:'var(--color-gold)'},
           ].map((s, i) => (
-            <div key={s.n} className={`flex items-start gap-4 slide-in delay-${i+1}`}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold text-white"
-                style={{background: i === 2 ? 'var(--color-accent)' : 'var(--color-brand)'}}>{s.n}</div>
-              <div>
-                <p className="text-sm font-semibold">{s.t}</p>
-                <p className="text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>{s.d}</p>
-              </div>
+            <div key={s.n} className={`text-center sm:text-center slide-in delay-${i+1} relative`}>
+              <p className="font-display text-4xl font-bold mb-2" style={{color:s.color}}>{s.n}</p>
+              <p className="text-sm font-semibold">{s.t}</p>
+              <p className="text-xs mt-1" style={{color:'var(--color-text-muted)'}}>{s.d}</p>
             </div>
           ))}
         </div>
