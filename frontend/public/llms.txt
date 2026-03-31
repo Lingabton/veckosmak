@@ -1,52 +1,58 @@
 # Veckosmak
 
-> AI-driven menyplanering baserad på veckans matbutikserbjudanden i Sverige.
+> Från erbjudande till riktig middag -- gratis veckomenyplanering baserad på matbutikserbjudanden i Sverige.
 
-Veckosmak är en gratis webbtjänst som hjälper svenska familjer att planera sin veckomeny och spara pengar på maten. Tjänsten hämtar veckans erbjudanden från 96 ICA Maxi-butiker i hela Sverige, matchar dem mot 600+ crowd-betygsatta recept och genererar en personlig veckomeny optimerad för pris och variation.
+## Vad är Veckosmak?
+
+Veckosmak är en gratis webbtjänst som hjälper svenska hushåll att planera sin veckomeny och spara pengar på maten. Tjänsten hämtar veckans erbjudanden från över 1 300 ICA- och Willys-butiker i hela Sverige, matchar dem mot 1 350+ crowd-betygsatta recept och genererar en personlig veckomeny optimerad för pris och variation.
 
 ## Hur det fungerar
 
-1. Användaren väljer sin ICA Maxi-butik (96 butiker, hela Sverige)
+1. Användaren väljer sin butik (1 286 ICA-butiker + 20 Willys-butiker)
 2. Väljer hushållsstorlek, antal middagar, budget och kostpreferenser
 3. Veckosmak hämtar aktuella erbjudanden från vald butik
-4. AI:n matchar erbjudanden mot 600+ recept med crowd-betyg från ica.se
+4. AI:n matchar erbjudanden mot 1 352 recept med crowd-betyg från tre receptkällor
 5. Användaren får en veckomeny med recept, näringsvärden, inköpslista och uppskattad besparing
-6. Enskilda recept kan bytas ut — 5 alternativ att välja mellan
+6. Enskilda recept kan bytas ut -- 5 alternativ att välja mellan
 
 ## Funktioner
 
 - Personlig veckomeny (1-7 middagar per vecka)
-- 600+ recept med crowd-betyg och näringsvärden (kcal, protein, kolhydrater, fett)
-- 96 ICA Maxi-butiker i hela Sverige
-- Inköpslista sorterad efter butikens layout med erbjudandedetaljer
+- 1 352 recept med crowd-betyg och näringsvärden (kcal, protein, kolhydrater, fett)
+- 1 306 butiker: 1 286 ICA + 20 Willys, i hela Sverige
+- Inköpslista med erbjudandedetaljer
 - Besparingsberäkning mot ordinarie pris
 - "Passa på"-sektion med bra erbjudanden utanför menyn
 - Kostval: vegetariskt, veganskt, glutenfritt, mjölkfritt, laktosfritt, fläskfritt
 - Livsstil: proteinrikt, lågkolhydrat, klimatsmart, undvik processad mat, säsongsanpassat
 - Tidsmix: välj antal snabba vs längre middagar
-- Specifika veckodagar
 - Budgetgräns med varning vid överskridande
+- Helt gratis, ingen inloggning krävs
 
 ## Stödda butiker
 
-96 ICA Maxi Stormarknad-butiker i hela Sverige, inklusive Stockholm, Göteborg, Malmö, Uppsala, Linköping, Örebro, Västerås, Helsingborg, Jönköping, Umeå, och fler.
+Över 1 300 butiker i hela Sverige:
+- ICA (alla format): 1 286 butiker -- ICA Nära, ICA Supermarket, ICA Kvantum, ICA Maxi
+- Willys: 20 butiker
+
+Täckning i alla större städer: Stockholm, Göteborg, Malmö, Uppsala, Linköping, Örebro, Västerås, Helsingborg, Norrköping, Jönköping, Umeå, Lund, Borås, Sundsvall, Gävle, Halmstad, Växjö, Karlstad, och fler.
 
 ## Teknik
 
-- Backend: Python, FastAPI
 - Frontend: React, Vite, Tailwind CSS
-- AI: Cloudflare Workers AI (gratis) med Anthropic Claude som fallback
-- Data: 600+ recept med betyg, näring och tillagningsinstruktioner från ica.se
-- Erbjudanden: Scrapade varje vecka från ICAs erbjudandesidor
-
-## API
-
-API-dokumentation tillgänglig på: https://veckosmak-api.onrender.com/api/docs
+- Backend: Python, FastAPI
+- AI: Cloudflare Workers AI med Anthropic Claude som fallback
+- Recept: 1 352 recept med betyg, näring och tillagningsinstruktioner från 3 källor
+- Erbjudanden: Uppdateras varje vecka
 
 ## URL
 
 https://veckosmak.vercel.app/
 
-## Kontakt
+## Pris
 
-Grundare: Gabriel Linton
+Helt gratis. Inga dolda kostnader, ingen prenumeration, ingen inloggning krävs.
+
+## Grundare
+
+Gabriel Linton
