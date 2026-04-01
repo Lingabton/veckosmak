@@ -647,35 +647,38 @@ async def submit_feedback(req: FeedbackRequest):
     return {"status": "ok"}
 
 
+# "Passa på" categories — practical needs for a family, not junk
+# Use word-boundary matching to avoid "rotfruktsgratäng" matching "frukt"
 BONUS_CATEGORIES = {
     "frukost": {
-        "label": "Frukost",
-        "keywords": ["yoghurt", "müsli", "flingor", "juice", "ägg", "ost", "smör",
-                      "bregott", "fil", "kvarg", "havre", "marmelad", "sylt", "honung",
-                      "mjölk", "apelsin"],
+        "label": "Frukost & mejeri",
+        "keywords": ["yoghurt", "müsli", "flingor", "havre", "fil ",
+                      "kvarg", "marmelad", "sylt", "honung", "bregott"],
         "max": 3,
     },
-    "frukt": {
-        "label": "Frukt & mellanmål",
-        "keywords": ["banan", "äpple", "päron", "clementin", "druv", "mango",
-                      "ananas", "melon", "bär", "nötter", "mandel", "frukt",
-                      "avokado", "smoothie", "bar "],
-        "max": 3,
-    },
-    "fika": {
-        "label": "Fika & snacks",
-        "keywords": ["kaffe", "te ", "kex", "choklad", "kaka", "bulle", "chips",
-                      "godis", "glass", "läsk", "saft", "dryck", "cookie"],
-        "max": 3,
+    "basvara": {
+        "label": "Bra basvaror",
+        "keywords": ["mjölk ", "smör ", "ost ", "grädde", "ägg ",
+                      "pasta ", "ris ", "mjöl ", "olja", "buljong",
+                      "krossade tomater", "tomatpuré"],
+        "max": 4,
     },
     "hushal": {
-        "label": "Bra att ha",
-        "keywords": ["toapapper", "hushålls", "tvättmedel", "diskmedel", "servett",
-                      "påse", "folie", "blöja", "schampo", "tandkräm", "tvål",
-                      "rengöring", "sköljmedel"],
+        "label": "Hushåll",
+        "keywords": ["toapapper", "hushållspapper", "tvättmedel", "diskmedel",
+                      "sköljmedel", "rengöring"],
         "max": 2,
     },
 }
+
+# Items to EXCLUDE from "Passa på" — not basic needs
+BONUS_EXCLUDE = [
+    "godis", "chips", "snacks", "choklad", "kaka", "bulle",
+    "läsk", "coca", "pepsi", "fanta", "sprite", "energidryck",
+    "glass", "cookie", "tuggummi",
+    "påskägg", "servett", "ljus ", "dekoration",
+    "saft", "dryck",
+]
 
 
 @app.get("/api/offers/bonus")
@@ -701,15 +704,23 @@ async def bonus_offers(menu_id: str = "", store_id: str = "ica-maxi-1004097"):
         discount = 0
         if o.original_price and o.original_price > 0:
             discount = (1 - o.offer_price / o.original_price) * 100
-        if discount < 5 and not o.quantity_deal:
+        if discount < 3 and not o.quantity_deal:
+            continue
+
+        name_lower = o.product_name.lower()
+
+        # Exclude junk/non-essential items
+        if any(ex in name_lower for ex in BONUS_EXCLUDE):
             continue
 
         item = {**o.model_dump(), "discount": round(discount)}
-        name_lower = o.product_name.lower()
         placed = False
 
+        # Use space-padded keywords for word-boundary matching
+        # " ost " won't match "rotfruktsgratäng", " ägg " won't match "påskägg"
+        name_padded = f" {name_lower} "
         for cat_key, cat_config in BONUS_CATEGORIES.items():
-            if any(kw in name_lower for kw in cat_config["keywords"]):
+            if any(kw in name_padded or (not kw.endswith(' ') and kw in name_lower) for kw in cat_config["keywords"]):
                 if len(categorized[cat_key]) < cat_config["max"]:
                     categorized[cat_key].append(item)
                     placed = True
@@ -731,12 +742,13 @@ async def bonus_offers(menu_id: str = "", store_id: str = "ica-maxi-1004097"):
                 "offers": categorized[cat_key],
             })
 
-    # Add top uncategorized as "Övrigt" if there's room
-    if uncategorized:
-        uncategorized.sort(key=lambda x: -x.get("discount", 0))
+    # Add top uncategorized — only food items (meat, fish, dairy, produce, pantry)
+    food_uncat = [u for u in uncategorized if u.get("category") in ("meat", "fish", "dairy", "produce", "pantry", "frozen")]
+    if food_uncat:
+        food_uncat.sort(key=lambda x: -x.get("discount", 0))
         groups.append({
-            "label": "Övrigt",
-            "offers": uncategorized[:3],
+            "label": "Fler matvaror",
+            "offers": food_uncat[:3],
         })
 
     return {"groups": groups}

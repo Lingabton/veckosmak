@@ -445,14 +445,32 @@ def generate_fallback_menu(
     selected = []
     used_ids = set()
     used_proteins = []
+    used_title_words = set()  # Prevent "broccolipaj" + "broccolipaj med ost"
 
-    # First pass: pick by score + overlap
+    def _title_fingerprint(recipe):
+        """Key words from title for duplicate detection."""
+        stop = {'med', 'och', 'i', 'på', 'till', 'för', 'en', 'ett', 'den', 'det'}
+        return {w for w in recipe.title.lower().split() if len(w) >= 4 and w not in stop}
+
+    def _too_similar(recipe):
+        """Block recipes with >50% title word overlap with selected."""
+        if not used_title_words:
+            return False
+        words = _title_fingerprint(recipe)
+        if not words:
+            return False
+        overlap = words & used_title_words
+        return len(overlap) / len(words) > 0.5
+
+    # First pass: pick by score + overlap, block duplicates
     for round_num in range(preferences.num_dinners):
         best_candidate = None
         best_total_score = -1
 
         for r, base_score in pool:
             if r.id in used_ids:
+                continue
+            if _too_similar(r):
                 continue
             protein = _primary_protein(r)
             if used_proteins.count(protein) >= 2:
@@ -471,6 +489,7 @@ def generate_fallback_menu(
             selected.append(r)
             used_ids.add(r.id)
             used_proteins.append(protein)
+            used_title_words.update(_title_fingerprint(r))
         else:
             break
 
