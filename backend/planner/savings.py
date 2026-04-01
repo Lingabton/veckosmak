@@ -106,7 +106,7 @@ def estimate_ingredient_cost(
         if premium_name in name_lower:
             price = premium_price
             break
-    cost = min(_estimate_default_cost(amount, ingredient.unit, price), MAX_INGREDIENT_COST)
+    cost = min(_estimate_default_cost(amount, ingredient.unit, price, ingredient.category), MAX_INGREDIENT_COST)
     return cost, cost
 
 
@@ -166,8 +166,8 @@ def _calculate_regular_cost(
     return original_price
 
 
-def _estimate_default_cost(amount: float, unit: str, default_price: float) -> float:
-    """Estimate cost when no offer exists."""
+def _estimate_default_cost(amount: float, unit: str, default_price: float, category: str = "other") -> float:
+    """Estimate cost when no offer exists. Uses package-based pricing for small units."""
     if unit in ("g", "kg"):
         kg = amount * WEIGHT_PER_UNIT.get(unit, 0.001)
         return default_price * max(0.1, kg)
@@ -183,8 +183,19 @@ def _estimate_default_cost(amount: float, unit: str, default_price: float) -> fl
         return default_price * max(0.1, kg)
     elif unit == "knippe":
         return min(default_price, 25.0)
-    elif unit in ("msk", "tsk", "krm", "nypa"):
-        # Small amounts — negligible cost
+    elif unit in ("msk", "tsk"):
+        # You buy a whole package even for small amounts
+        # 1 msk crème fraiche = buy 1 package (~20 kr), not 1 kr
+        # But share cost if multiple recipes use the same ingredient
+        PACKAGE_PRICES = {
+            "dairy": 22.0,   # crème fraiche, gräddfil etc
+            "pantry": 15.0,  # soja, senap, vinäger etc
+            "produce": 10.0, # citronjuice etc
+            "other": 15.0,
+        }
+        return PACKAGE_PRICES.get(category, 15.0)
+    elif unit in ("krm", "nypa"):
+        # Truly negligible — spices you already have
         return 1.0
     else:
         return 3.0

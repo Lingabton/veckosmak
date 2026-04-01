@@ -54,15 +54,17 @@ MENU_SYSTEM_PROMPT = """Du är en svensk menyplanerare. Din uppgift är att skap
 som maximerar användningen av butikens veckoerrbjudanden.
 
 REGLER:
-1. Prioritera recept med högt crowd-betyg OCH erbjudande-matchningar
-2. Om användaren valt "bästa köp", MÅSTE minst hälften av recepten använda dessa ingredienser
-3. Variera proteinkällor (inte kyckling varje dag)
-4. Respektera tidsmixen (t.ex. 2 snabba + 3 längre)
-5. Respektera kostval och livsstilspreferenser
-6. Om hushållet har barn, prioritera barnvänliga rätter
-7. Håll dig inom budget om angiven
-8. Om "minska matsvinn" önskas: välj recept som delar ingredienser
-9. Om receptet saknar tydliga tillbehör (bara kött/fisk utan potatis/ris/pasta), föreslå tillbehör i "side_suggestion"
+1. KAMPANJVAROR ÄR KÄRNAN — välj recept där huvudingrediensen (kött/fisk/protein) är på erbjudande
+2. Prioritera recept med högt crowd-betyg OCH erbjudande-matchningar
+3. Om användaren valt "bästa köp", MÅSTE minst hälften av recepten använda dessa ingredienser
+4. Variera proteinkällor (inte kyckling varje dag)
+5. DELA INGREDIENSER mellan recept för att minska svinn och sänka kostnad (t.ex. om 2 recept använder grädde köper man bara 1 förpackning)
+6. Respektera tidsmixen (t.ex. 2 snabba + 3 längre)
+7. Respektera kostval och livsstilspreferenser
+8. Om hushållet har barn, prioritera barnvänliga rätter
+9. Håll dig inom budget om angiven
+10. Om receptet saknar tydliga tillbehör (bara kött/fisk utan potatis/ris/pasta), föreslå tillbehör i "side_suggestion"
+11. ALDRIG föreslå ett recept som gör något från grunden om samma produkt finns som färdigvara på erbjudande (t.ex. om frysta köttbullar är på kampanj, föreslå INTE hemmagjorda köttbullar)
 
 DAGKONTEXT (anpassa rätter till vardagar vs helg):
 - Måndag-torsdag: Vardagsrätter, snabbare, enklare
@@ -155,6 +157,55 @@ def _is_incomplete_recipe(recipe: Recipe) -> bool:
     is_selfcontained = any(kw in title_lower for kw in ['soppa', 'gryta', 'wok', 'sallad', 'bowl', 'burrito', 'kebab', 'pannkak', 'omelett', 'paj', 'gratäng', 'lasagne', 'risotto', 'curry'])
     if not has_carb and not is_selfcontained and len(real_ingredients) < 6:
         return True
+    return False
+
+
+# Ready-made products — if these are on offer, don't suggest recipes that MAKE them
+# Instead, we want recipes that USE them (e.g. "köttbullar med potatismos", not "hemmagjorda köttbullar")
+READY_MADE_KEYWORDS = [
+    "köttbullar", "fiskpinnar", "fiskbullar", "nuggets", "falafel",
+    "korv", "falukorv", "grillkorv", "prinskorv",
+    "pizza", "piroger", "vårrullar", "kroppkakor",
+    "pannkakor", "plättar", "blini",
+]
+
+
+def _recipe_makes_ready_made(recipe: Recipe, offers: list[Offer]) -> bool:
+    """Check if a recipe makes something from scratch that's available ready-made.
+
+    E.g., if "Frysta köttbullar" is on offer, skip "Klassiska köttbullar" (recipe
+    that makes köttbullar from färs+ströbröd+ägg). Instead prefer recipes that
+    SERVE köttbullar (like "köttbullar med potatismos").
+    """
+    title_lower = recipe.title.lower()
+
+    for keyword in READY_MADE_KEYWORDS:
+        if keyword not in title_lower:
+            continue
+
+        # Check if any offer IS this ready-made product
+        offer_has_readymade = any(
+            keyword in o.product_name.lower() and (
+                "fryst" in o.product_name.lower() or
+                "färdig" in o.product_name.lower() or
+                o.category in ("frozen", "other") or
+                # The offer is the product itself (not raw ingredient)
+                not any(raw in o.product_name.lower() for raw in ["färs", "filé", "bröst", "lår", "bog"])
+            )
+            for o in offers
+        )
+
+        if not offer_has_readymade:
+            continue
+
+        # This recipe has the keyword AND the offer has the ready-made version
+        # Check if the recipe MAKES it from scratch (has raw ingredients like färs, ägg, ströbröd)
+        ingredient_names = " ".join(i.name.lower() for i in recipe.ingredients)
+        makes_from_scratch = sum(1 for raw in ["färs", "ströbröd", "ägg", "mjöl", "deg", "jäst"]
+                                  if raw in ingredient_names)
+        if makes_from_scratch >= 2:
+            return True
+
     return False
 
 
@@ -375,23 +426,52 @@ def generate_fallback_menu(
             if ing.category == 'fish': return 'övrigt-fisk'
         return 'vegetarisk'
 
+    # Build ingredient fingerprint for overlap scoring (reduce waste)
+    def _ingredient_set(recipe):
+        return {i.name.lower().split()[0] for i in recipe.ingredients
+                if not i.is_pantry_staple and len(i.name) > 2}
+
+    def _overlap_bonus(recipe, selected_recipes):
+        """Bonus for sharing ingredients with already-selected recipes."""
+        if not selected_recipes:
+            return 0
+        recipe_ings = _ingredient_set(recipe)
+        selected_ings = set()
+        for sr in selected_recipes:
+            selected_ings.update(_ingredient_set(sr))
+        shared = recipe_ings & selected_ings
+        return len(shared) * 0.5  # 0.5 points per shared ingredient
+
     selected = []
     used_ids = set()
     used_proteins = []
-    for r, _ in pool:
-        if r.id in used_ids:
-            continue
-        protein = _primary_protein(r)
-        # Don't repeat the same protein source (allow max 2 of same in a 7-day menu)
-        if used_proteins.count(protein) >= 2:
-            continue
-        # Never repeat same protein two days in a row
-        if used_proteins and used_proteins[-1] == protein:
-            continue
-        selected.append(r)
-        used_ids.add(r.id)
-        used_proteins.append(protein)
-        if len(selected) >= preferences.num_dinners:
+
+    # First pass: pick by score + overlap
+    for round_num in range(preferences.num_dinners):
+        best_candidate = None
+        best_total_score = -1
+
+        for r, base_score in pool:
+            if r.id in used_ids:
+                continue
+            protein = _primary_protein(r)
+            if used_proteins.count(protein) >= 2:
+                continue
+            if used_proteins and used_proteins[-1] == protein:
+                continue
+
+            overlap = _overlap_bonus(r, selected)
+            total = base_score + overlap
+            if total > best_total_score:
+                best_total_score = total
+                best_candidate = (r, protein)
+
+        if best_candidate:
+            r, protein = best_candidate
+            selected.append(r)
+            used_ids.add(r.id)
+            used_proteins.append(protein)
+        else:
             break
 
     # If not enough after variety filter, fill from remaining (relax constraints)
@@ -450,6 +530,8 @@ async def generate_menu(
     now = datetime.now()
 
     eligible = filter_recipes_by_preferences(recipes, preferences)
+    # Filter out recipes that make something from scratch when the ready-made is on offer
+    eligible = [r for r in eligible if not _recipe_makes_ready_made(r, offers)]
     if not eligible:
         raise ValueError("Inga recept matchar dina preferenser. Prova att ändra kostval eller ta bort ingredienser du undviker.")
 

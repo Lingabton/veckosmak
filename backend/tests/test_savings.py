@@ -69,10 +69,16 @@ def test_max_ingredient_cost_cap():
     assert cost_with <= 400.0
 
 
-def test_small_unit_negligible_cost():
-    """1 tsk should cost ~1 kr."""
-    cost = _estimate_default_cost(1, "tsk", 100.0)
-    assert cost == 1.0
+def test_small_unit_package_cost():
+    """Small units should cost a whole package, not negligible amounts."""
+    # msk/tsk = buy a whole package
+    cost_dairy = _estimate_default_cost(1, "msk", 100.0, "dairy")
+    assert cost_dairy == 22.0  # Dairy package (crème fraiche etc)
+    cost_pantry = _estimate_default_cost(1, "tsk", 100.0, "pantry")
+    assert cost_pantry == 15.0  # Pantry package (soja etc)
+    # krm/nypa = truly negligible
+    cost_krm = _estimate_default_cost(1, "krm", 100.0)
+    assert cost_krm == 1.0
 
 
 def test_calculate_meal_cost_aggregation(sample_offers):
