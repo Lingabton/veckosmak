@@ -477,60 +477,76 @@ async def swap_menu_recipe(req: SwapRequest):
 
 @app.get("/api/offers/top")
 async def top_offers(store_id: str = "ica-maxi-1004097", limit: int = 12):
-    """Return best dinner-relevant deals — proteins first, good mix, best value.
+    """Return best dinner deals — focus on expensive ingredients where savings matter most.
 
-    Scoring: dinner relevance × discount × category diversity.
-    Proteins (meat, fish) get a bonus since they're the most expensive
-    part of a dinner and offer the most savings.
+    Priority: proteins (kött, fisk) > ost/mejeri > grönsaker > skafferi.
+    Filter out everything that isn't useful for cooking dinner.
     """
     raw_offers = await get_current_offers(store_id)
     offers = [_db_offer_to_model(o) for o in raw_offers]
 
-    # Categories useful for cooking dinners (not läsk, godis, toapapper)
+    # ONLY these categories are relevant for building dinners
     DINNER_CATEGORIES = {"meat", "fish", "dairy", "produce", "pantry", "frozen"}
-    # Non-food keywords to filter out
-    NON_DINNER = [
-        "läsk", "coca", "pepsi", "fanta", "sprite", "godis", "chips", "snacks",
+
+    # Explicit blocklist — anything not useful for cooking
+    NOT_DINNER = [
+        # Drinks
+        "läsk", "coca-cola", "pepsi", "fanta", "sprite", "saft", "juice",
+        "öl", "vin", "cider", "energidryck", "vatten", "kaffe", "te ",
+        # Snacks & sweets
+        "godis", "chips", "snacks", "choklad", "kaka", "bulle", "glass",
+        "cookie", "tuggummi", "popcorn",
+        # Household
         "toapapper", "hushållspapper", "tvättmedel", "diskmedel", "schampo",
-        "tandkräm", "blöja", "servett", "kaffe", "te ", "glass", "saft",
-        "juice", "öl", "vin", "cider", "energidryck", "tuggummi",
+        "tandkräm", "blöja", "servett", "tvål", "rengöring", "sköljmedel",
+        # Seasonal/non-food
+        "påsk", "jul", "ljus", "blomm", "rosor", "bukett", "dekoration",
+        "batterier", "tidning",
+        # Tools/household items that get miscategorized
+        "laddare", "sekatör", "verktyg", "trädgård", "kruka", "jord",
+        "grillkol", "tändvätska", "engångs",
     ]
 
     scored = []
     for o in offers:
         name_lower = o.product_name.lower()
 
-        # Skip non-dinner items
-        if any(nd in name_lower for nd in NON_DINNER):
+        # Hard filter: block non-dinner items
+        if any(nd in name_lower for nd in NOT_DINNER):
             continue
 
-        # Skip non-food categories (unless they're actually food in "other")
-        if o.category == "other" and o.category not in DINNER_CATEGORIES:
-            # Allow "other" if it looks like food
-            food_hints = ["grädde", "ägg", "tomat", "sås", "buljong", "krydda",
-                          "olja", "vinäger", "senap", "ketchup"]
-            if not any(h in name_lower for h in food_hints):
+        # Only allow dinner-relevant categories
+        if o.category not in DINNER_CATEGORIES:
+            # "other" category: only allow if it's clearly cooking-related
+            cooking_keywords = ["grädde", "créme", "ägg", "tomat", "sås",
+                                "buljong", "krydda", "olja", "vinäger", "senap",
+                                "ketchup", "fond", "kokosmjölk"]
+            if not any(kw in name_lower for kw in cooking_keywords):
                 continue
 
         discount = 0
         if o.original_price and o.original_price > 0:
             discount = (1 - o.offer_price / o.original_price) * 100
-        if discount < 3 and not o.quantity_deal:
-            continue
 
-        # Score: base discount + dinner relevance bonus
-        score = max(discount, 8 if o.quantity_deal else 0)
+        # Score based on: how much money does this SAVE on a dinner?
+        # Expensive items with good discounts = most valuable
+        price = o.offer_price
+        estimated_savings_kr = (o.original_price - o.offer_price) if o.original_price else price * 0.2
 
-        # Protein bonus — meat & fish are the expensive part of dinner
+        # Base: actual kr saved (not just %) — 50 kr off oxfilé > 5 kr off yoghurt
+        score = max(estimated_savings_kr, 5 if o.quantity_deal else 0)
+
+        # Category multiplier — proteins are the expensive part of dinner
         if o.category == "meat":
-            score += 15
+            score *= 2.5   # Kött: biggest expense, biggest savings potential
         elif o.category == "fish":
-            score += 12
-        # Other dinner essentials
+            score *= 2.2   # Fisk: expensive, great dinner base
         elif o.category == "dairy":
-            score += 5
+            score *= 1.3   # Ost/grädde: useful, moderately expensive
         elif o.category == "produce":
-            score += 5
+            score *= 1.0   # Grönsaker: cheap anyway
+        elif o.category == "pantry":
+            score *= 0.8   # Skafferi: staples, less savings impact
 
         scored.append((o, score, discount))
 
