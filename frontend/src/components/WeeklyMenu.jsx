@@ -3,14 +3,34 @@ import RecipeCard from './RecipeCard'
 import SavingsBanner from './SavingsBanner'
 import EmailSignup from './EmailSignup'
 
-export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onBack, onRegenerate, onFeedback, expandAll, setExpandAll, bonusOffers }) {
+const DIETS = [
+  {v:'vegetarian',l:'Vegetarisk'},{v:'vegan',l:'Vegansk'},{v:'glutenfree',l:'Glutenfri'},
+  {v:'dairyfree',l:'Mjölkfri'},{v:'lactosefree',l:'Laktosfri'},{v:'porkfree',l:'Fläskfri'},
+]
+
+export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onBack, onRegenerate, onFeedback, expandAll, setExpandAll, bonusOffers, preferences, setPreferences }) {
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [settingsChanged, setSettingsChanged] = useState(false)
   if (!menu) return null
 
   const handleRegenerate = () => {
-    if (!confirmRegenerate) { setConfirmRegenerate(true); return }
+    if (!confirmRegenerate && !settingsChanged) { setConfirmRegenerate(true); return }
     setConfirmRegenerate(false)
+    setSettingsChanged(false)
+    setShowSettings(false)
     onRegenerate()
+  }
+
+  const update = (k, v) => {
+    if (setPreferences) {
+      setPreferences({...preferences, [k]: v})
+      setSettingsChanged(true)
+    }
+  }
+  const toggleDiet = (v) => {
+    const c = preferences?.dietary_restrictions || []
+    update('dietary_restrictions', c.includes(v) ? c.filter(d => d !== v) : [...c, v])
   }
 
   return (
@@ -29,7 +49,7 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
 
       <div className="mb-5">
         <h1 className="font-display text-3xl font-bold" style={{ letterSpacing: '-0.03em' }}>Din veckomeny</h1>
-        <p className="text-sm mt-1 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-sm mt-1 flex items-center gap-2 flex-wrap" style={{ color: 'var(--text-muted)' }}>
           <span className="text-xs font-medium px-2 py-0.5 rounded" style={{background:'var(--color-brand-light)',color:'var(--color-brand-dark)'}}>
             {menu.store_name || 'ICA'}
           </span>
@@ -41,28 +61,90 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
             </a>
           )}
         </p>
-        {menu.preferences && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-border-light)', color: 'var(--color-text-secondary)' }}>
-              {menu.preferences.household_size} pers
-            </span>
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-border-light)', color: 'var(--color-text-secondary)' }}>
-              {menu.meals?.length} middagar
-            </span>
-            {menu.preferences.budget_per_week && (
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--color-border-light)', color: 'var(--color-text-secondary)' }}>
-                Budget: {menu.preferences.budget_per_week} kr
-              </span>
+
+        {/* Interactive settings strip */}
+        {preferences && (
+          <div className="mt-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Tappable badges */}
+              <button onClick={() => setShowSettings(!showSettings)}
+                className="text-xs px-2.5 py-1 rounded-full transition-all"
+                style={{
+                  background: showSettings ? 'var(--color-brand-light)' : 'var(--color-border-light)',
+                  color: showSettings ? 'var(--color-brand-dark)' : 'var(--color-text-secondary)',
+                  border: showSettings ? '1px solid var(--color-brand)' : '1px solid transparent',
+                }}>
+                {preferences.household_size} pers · {menu.meals?.length} middagar
+                {preferences.budget_per_week ? ` · ${preferences.budget_per_week} kr` : ''}
+                <span className="ml-1 opacity-50">{showSettings ? '▲' : '✎'}</span>
+              </button>
+
+              {menu.active_filters?.map(f => (
+                <span key={f} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--green-soft)', color: 'var(--green)' }}>
+                  {f}
+                </span>
+              ))}
+
+              {settingsChanged && (
+                <button onClick={handleRegenerate}
+                  className="text-xs font-semibold px-3 py-1 rounded-full text-white fade-in"
+                  style={{ background: 'var(--color-accent)' }}>
+                  Uppdatera meny
+                </button>
+              )}
+            </div>
+
+            {/* Expandable inline settings */}
+            {showSettings && (
+              <div className="card p-4 mt-3 expand">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="text-xs font-medium mb-1.5 block" style={{color:'var(--color-text-muted)'}}>Antal personer</label>
+                    <div className="flex items-center gap-2">
+                      <button className="stepper-btn" style={{width:36,height:36,fontSize:16}}
+                        onClick={() => update('household_size', Math.max(1, preferences.household_size - 1))}>−</button>
+                      <span className="text-lg font-bold w-6 text-center">{preferences.household_size}</span>
+                      <button className="stepper-btn" style={{width:36,height:36,fontSize:16}}
+                        onClick={() => update('household_size', Math.min(8, preferences.household_size + 1))}>+</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1.5 block" style={{color:'var(--color-text-muted)'}}>Middagar</label>
+                    <div className="flex items-center gap-2">
+                      <button className="stepper-btn" style={{width:36,height:36,fontSize:16}}
+                        onClick={() => update('num_dinners', Math.max(1, preferences.num_dinners - 1))}>−</button>
+                      <span className="text-lg font-bold w-6 text-center">{preferences.num_dinners}</span>
+                      <button className="stepper-btn" style={{width:36,height:36,fontSize:16}}
+                        onClick={() => update('num_dinners', Math.min(7, preferences.num_dinners + 1))}>+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="text-xs font-medium mb-1.5 block" style={{color:'var(--color-text-muted)'}}>Kostfilter</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DIETS.map(d => (
+                      <button key={d.v} onClick={() => toggleDiet(d.v)}
+                        className={`btn-pill text-xs ${(preferences.dietary_restrictions||[]).includes(d.v) ? 'active' : ''}`}>
+                        {d.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {settingsChanged && (
+                  <button onClick={handleRegenerate}
+                    className="btn btn-primary w-full py-3 text-sm">
+                    Skapa ny meny med dessa inställningar
+                  </button>
+                )}
+                {!settingsChanged && (
+                  <p className="text-xs text-center" style={{color:'var(--color-text-muted)'}}>
+                    Ändra inställningar ovan för att generera en ny meny
+                  </p>
+                )}
+              </div>
             )}
-          </div>
-        )}
-        {menu.active_filters && menu.active_filters.length > 0 && (
-          <div className="flex gap-1.5 mt-2">
-            {menu.active_filters.map(f => (
-              <span key={f} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--green-soft)', color: 'var(--green)' }}>
-                {f}
-              </span>
-            ))}
           </div>
         )}
       </div>
@@ -88,7 +170,7 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
         <div className="mt-10">
           <h2 className="text-lg font-bold tracking-tight mb-1">Passa på</h2>
           <p className="text-sm mb-5" style={{ color: 'var(--color-text-muted)' }}>
-            Bra priser — tryck + för att lägga till på inköpslistan
+            Bra priser på basvaror — tryck + för att lägga till på inköpslistan
           </p>
           <div className="space-y-5">
             {bonusOffers.map((group, gi) => (
@@ -110,7 +192,7 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
                             {Math.round(offer.offer_price)} {offer.unit}
                           </span>
                           {offer.discount > 0 && (
-                            <span className="block text-xs font-medium" style={{ color: 'var(--color-brand)' }}>−{offer.discount}%</span>
+                            <span className="block text-xs font-medium" style={{ color: 'var(--color-brand)' }}>{offer.discount} % rabatt</span>
                           )}
                         </div>
                         <button onClick={() => {

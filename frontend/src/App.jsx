@@ -106,6 +106,7 @@ function App() {
               onRegenerate={generateMenu} onFeedback={sendFeedback}
               expandAll={expandAll} setExpandAll={setExpandAll}
               bonusOffers={bonusOffers}
+              preferences={preferences} setPreferences={setPreferences}
             />
           ) : view === 'shopping' && menu ? (
             <ShoppingList
