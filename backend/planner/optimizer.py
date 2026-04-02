@@ -59,12 +59,13 @@ REGLER:
 3. Om användaren valt "bästa köp", MÅSTE minst hälften av recepten använda dessa ingredienser
 4. Variera proteinkällor (inte kyckling varje dag)
 5. DELA INGREDIENSER mellan recept för att minska svinn och sänka kostnad (t.ex. om 2 recept använder grädde köper man bara 1 förpackning)
-6. Respektera tidsmixen (t.ex. 2 snabba + 3 längre)
-7. Respektera kostval och livsstilspreferenser
-8. Om hushållet har barn, prioritera barnvänliga rätter
-9. Håll dig inom budget om angiven
-10. Om receptet saknar tydliga tillbehör (bara kött/fisk utan potatis/ris/pasta), föreslå tillbehör i "side_suggestion"
-11. ALDRIG föreslå ett recept som gör något från grunden om samma produkt finns som färdigvara på erbjudande (t.ex. om frysta köttbullar är på kampanj, föreslå INTE hemmagjorda köttbullar)
+6. Om ett erbjudande är "2 för X kr" — försök hitta 2 recept som BÅDA använder den ingrediensen, så inget slängs
+7. Respektera tidsmixen (t.ex. 2 snabba + 3 längre)
+8. Respektera kostval och livsstilspreferenser
+9. Om hushållet har barn, prioritera barnvänliga rätter
+10. Håll dig inom budget om angiven
+11. Om receptet saknar tydliga tillbehör (bara kött/fisk utan potatis/ris/pasta), föreslå tillbehör i "side_suggestion"
+12. ALDRIG föreslå ett recept som gör något från grunden om samma produkt finns som färdigvara på erbjudande
 
 DAGKONTEXT (anpassa rätter till vardagar vs helg):
 - Måndag-torsdag: Vardagsrätter, snabbare, enklare

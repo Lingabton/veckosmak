@@ -218,40 +218,45 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
       {/* === Store selector === */}
       <StoreSelector preferences={preferences} update={update} />
 
-      {/* === Quick start for returning users === */}
-      {isReturning && !menu && (
-        <div className="mb-5 fade-in">
-          <button onClick={generateMenu} disabled={loading} className="btn btn-primary w-full text-lg py-4">
-            Skapa veckans meny
-          </button>
-          <button onClick={()=>setShowMore(true)} className="w-full text-sm mt-2 py-1" style={{color:'var(--color-text-muted)'}}>
-            Ändra inställningar
-          </button>
+      {/* === Core settings — ALWAYS visible === */}
+      <div className="card p-6 mb-5">
+        <div className="grid grid-cols-2 gap-6 mb-4">
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Antal personer</label>
+            <div className="flex items-center gap-3">
+              <button className="stepper-btn" onClick={()=>update('household_size',Math.max(1,preferences.household_size-1))}>−</button>
+              <span className="text-2xl font-bold w-8 text-center">{preferences.household_size}</span>
+              <button className="stepper-btn" onClick={()=>update('household_size',Math.min(8,preferences.household_size+1))}>+</button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Middagar</label>
+            <div className="flex items-center gap-3">
+              <button className="stepper-btn" onClick={()=>update('num_dinners',Math.max(1,preferences.num_dinners-1))}>−</button>
+              <span className="text-2xl font-bold w-8 text-center">{preferences.num_dinners}</span>
+              <button className="stepper-btn" onClick={()=>update('num_dinners',Math.min(7,preferences.num_dinners+1))}>+</button>
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* === Form === */}
-      {(!isReturning || showMore || !menu) && (
+        <button onClick={generateMenu} disabled={loading} className="btn btn-primary w-full text-lg py-4">
+          {loading ? 'Skapar meny...' : 'Skapa min veckomeny'}
+        </button>
+        <p className="text-xs text-center mt-2" style={{color:'var(--color-text-muted)'}}>
+          Tar cirka 30 sekunder · Gratis · Ingen inloggning krävs
+        </p>
+
+        {!showMore && (
+          <button onClick={()=>setShowMore(true)} className="w-full text-sm mt-3 py-1 font-medium" style={{color:'var(--color-brand)'}}>
+            Fler inställningar (kost, budget, tid)
+          </button>
+        )}
+      </div>
+
+      {/* === Advanced form — expandable === */}
+      {showMore && (
         <div className="card p-6 mb-8">
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Antal personer</label>
-                <div className="flex items-center gap-3">
-                  <button className="stepper-btn" onClick={()=>update('household_size',Math.max(1,preferences.household_size-1))}>−</button>
-                  <span className="text-2xl font-bold w-8 text-center">{preferences.household_size}</span>
-                  <button className="stepper-btn" onClick={()=>update('household_size',Math.min(8,preferences.household_size+1))}>+</button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Middagar</label>
-                <div className="flex items-center gap-3">
-                  <button className="stepper-btn" onClick={()=>update('num_dinners',Math.max(1,preferences.num_dinners-1))}>−</button>
-                  <span className="text-2xl font-bold w-8 text-center">{preferences.num_dinners}</span>
-                  <button className="stepper-btn" onClick={()=>update('num_dinners',Math.min(7,preferences.num_dinners+1))}>+</button>
-                </div>
-              </div>
-            </div>
 
             <button onClick={()=>setShowMore(!showMore)} className="w-full text-sm py-2 font-medium" style={{color:'var(--color-text-muted)'}}>
               {showMore ? 'Dölj ▲' : `Fler inställningar${hasAdv?' ●':''} ▼`}

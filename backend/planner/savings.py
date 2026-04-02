@@ -111,7 +111,26 @@ def estimate_ingredient_cost(
 
 
 def _calculate_offer_cost(amount: float, unit: str, offer: Offer) -> float:
-    """Calculate cost using offer price."""
+    """Calculate cost using offer price.
+
+    For quantity deals like "2 för 209 kr", the offer_price is per-unit (104.5),
+    but you MUST buy the bundle. If you only need 1, you still pay the bundle price.
+    """
+    # Handle quantity deals: you buy the whole bundle
+    if offer.quantity_deal:
+        import re
+        bundle_match = re.search(r'(\d+)\s*för\s*(\d+)', offer.quantity_deal)
+        if bundle_match:
+            bundle_count = int(bundle_match.group(1))
+            bundle_price = float(bundle_match.group(2))
+            # You need to buy at least 1 bundle
+            # For "2 för 209": even if recipe needs 1, you pay 209
+            if unit in ("st", "port", ""):
+                bundles_needed = max(1, int((amount + bundle_count - 1) / bundle_count))
+                return bundle_price * bundles_needed
+            # For weight-based: estimate if you need more than 1 bundle
+            return bundle_price
+
     if offer.unit == "kr/kg":
         kg = amount * WEIGHT_PER_UNIT.get(unit, 0.001)
         # "port" typically means per-person portions (~150-200g for protein)
