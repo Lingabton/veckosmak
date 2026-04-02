@@ -246,10 +246,37 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
           Tar cirka 30 sekunder · Gratis · Ingen inloggning krävs
         </p>
 
-        {!showMore && (
-          <button onClick={()=>setShowMore(true)} className="w-full text-sm mt-3 py-1 font-medium" style={{color:'var(--color-brand)'}}>
-            Fler inställningar (kost, budget, tid)
-          </button>
+        {/* Expand/collapse for advanced settings */}
+        <button onClick={()=>setShowMore(!showMore)}
+          className="w-full mt-4 py-3 px-4 rounded-xl text-sm font-medium flex items-center justify-between transition-all"
+          style={{
+            background: showMore ? 'var(--color-brand-light)' : 'var(--color-bg)',
+            color: showMore ? 'var(--color-brand-dark)' : 'var(--color-text-secondary)',
+            border: `1px solid ${showMore ? 'var(--color-brand)' : 'var(--color-border)'}`,
+          }}>
+          <span className="flex items-center gap-2">
+            <span>{showMore ? 'Dölj filter' : 'Kostfilter, budget och mer'}</span>
+            {!showMore && hasAdv && (
+              <span className="w-2 h-2 rounded-full" style={{background:'var(--color-accent)'}} />
+            )}
+          </span>
+          <span style={{fontSize:12, opacity:0.6}}>{showMore ? '▲' : '▼'}</span>
+        </button>
+
+        {/* Active filters summary when collapsed */}
+        {!showMore && hasAdv && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {(preferences.dietary_restrictions||[]).map(d => {
+              const label = {vegetarian:'Vegetarisk',vegan:'Vegansk',glutenfree:'Glutenfri',dairyfree:'Mjölkfri',lactosefree:'Laktosfri',porkfree:'Fläskfri'}[d] || d
+              return <span key={d} className="text-xs px-2 py-0.5 rounded-full" style={{background:'var(--color-brand-light)',color:'var(--color-brand-dark)'}}>{label}</span>
+            })}
+            {preferences.budget_per_week && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{background:'var(--color-border-light)',color:'var(--color-text-secondary)'}}>Budget: {preferences.budget_per_week} kr</span>
+            )}
+            {preferences.has_children && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{background:'#fef3c7',color:'#92400e'}}>Barn i hushållet</span>
+            )}
+          </div>
         )}
       </div>
 
@@ -258,12 +285,8 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
         <div className="card p-6 mb-8">
           <div className="space-y-6">
 
-            <button onClick={()=>setShowMore(!showMore)} className="w-full text-sm py-2 font-medium" style={{color:'var(--color-text-muted)'}}>
-              {showMore ? 'Dölj ▲' : `Fler inställningar${hasAdv?' ●':''} ▼`}
-            </button>
-
             {showMore && (
-              <div className="space-y-5 pt-4 expand" style={{borderTop:'1px solid var(--color-border-light)'}}>
+              <div className="space-y-5 expand">
                 <label className="flex items-center gap-3 cursor-pointer text-sm">
                   <input type="checkbox" checked={preferences.has_children} onChange={e=>update('has_children',e.target.checked)} className="w-5 h-5 rounded accent-green-700" />
                   Hushållet har barn
