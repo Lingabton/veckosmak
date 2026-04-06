@@ -32,28 +32,24 @@ export default function EmailSignup({ context }) {
   }
 
   return (
-    <div className="card p-5 mt-8" style={{ background: 'var(--color-brand-light)', borderColor: 'var(--color-brand)' }}>
-      <p className="font-bold text-sm mb-1" style={{ color: 'var(--color-brand-dark)' }}>
-        Få veckans meny direkt i mejlen varje måndag
-      </p>
-      <p className="text-xs mb-3" style={{ color: 'var(--color-brand)' }}>
-        Gratis — vi skickar en färdig veckomeny baserad på veckans bästa erbjudanden.
-      </p>
-      <form onSubmit={handleSubmit} className="flex gap-2">
+    <div className="mt-6 py-3 px-4 rounded-xl" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+        <span className="text-xs shrink-0" style={{ color: 'var(--color-text-muted)' }}>Få menyn i mejlen:</span>
         <input
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           placeholder="din@mejl.se"
           required
-          className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-green-700"
+          className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-green-700"
           style={{ borderColor: 'var(--color-border)', background: 'white' }}
         />
-        <button type="submit" disabled={loading} className="btn btn-primary text-sm px-4 py-2 shrink-0">
-          {loading ? '...' : 'Prenumerera'}
+        <button type="submit" disabled={loading} className="text-xs font-medium px-3 py-1.5 rounded-lg shrink-0 transition-colors"
+          style={{ background: 'var(--color-brand)', color: 'white' }}>
+          {loading ? '...' : 'Skicka'}
         </button>
       </form>
-      {error && <p className="text-xs mt-2" style={{ color: '#c92a2a' }}>{error}</p>}
+      {error && <p className="text-xs mt-1.5" style={{ color: '#c92a2a' }}>{error}</p>}
     </div>
   )
 }

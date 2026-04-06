@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import EmailSignup from './EmailSignup'
+
 
 const DIETS = [
   {v:'vegetarian',l:'Vegetarisk'},{v:'vegan',l:'Vegansk'},{v:'glutenfree',l:'Glutenfri'},
@@ -60,13 +60,23 @@ function StoreSelector({ preferences, update }) {
           <div className="max-h-[60vh] overflow-y-auto">
             {!stores && <p className="px-4 py-3 text-xs" style={{color:'var(--color-text-muted)'}}>Laddar butiker...</p>}
             {stores && !search && <p className="px-4 py-2 text-xs" style={{color:'var(--color-text-muted)'}}>1 300+ butiker — sök din stad</p>}
+            {stores && search && filtered.length > 0 && <p className="px-4 py-1.5 text-xs" style={{color:'var(--color-text-muted)'}}>{filtered.length} butiker matchar "{search}"</p>}
+            {stores && search && filtered.length === 0 && <p className="px-4 py-3 text-sm" style={{color:'var(--color-text-muted)'}}>Ingen butik hittades för "{search}"</p>}
             {filtered.slice(0,25).map(([id,s])=>(
               <button key={id} onClick={()=>{update('store_id',id);setOpen(false);setSearch('')}}
                 className="w-full text-left px-4 py-2.5 border-b hover:bg-gray-50 transition-colors"
                 style={{borderColor:'var(--color-border-light)',background:id===preferences.store_id?'var(--color-brand-light)':'transparent'}}>
-                <span className="text-sm font-medium">{s.city}</span>
-                <span className="text-xs ml-2 font-medium" style={{color:typeColor[s.type]||'var(--color-text-muted)'}}>{typeLabel[s.type]}</span>
-                {s.address && <p className="text-xs" style={{color:'var(--color-text-muted)'}}>{s.address}</p>}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{
+                    background: id.startsWith('willys') ? '#e8371f' : 'var(--color-brand)',
+                    color: 'white',
+                  }}>{id.startsWith('willys') ? 'W' : 'ICA'}</span>
+                  <div>
+                    <span className="text-sm font-medium">{s.name || s.city}</span>
+                    <span className="text-xs ml-2 font-medium" style={{color:typeColor[s.type]||'var(--color-text-muted)'}}>{typeLabel[s.type]}</span>
+                    {s.city && s.name && <p className="text-xs" style={{color:'var(--color-text-muted)'}}>{s.city}</p>}
+                  </div>
+                </div>
               </button>
             ))}
           </div>
@@ -348,12 +358,33 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
           Testa Veckosmak gratis
         </button>
         <p className="text-xs mt-3" style={{color:'var(--color-text-muted)'}}>
-          1100+ ICA-butiker · 600+ recept med betyg · Helt gratis
+          1 300+ ICA-butiker · 600+ recept med betyg · Helt gratis
         </p>
       </section>
 
-      {/* Email signup */}
-      <EmailSignup context="home" />
+      {/* Menu history */}
+      {menuHistory.length > 1 && (
+        <section className="mb-8">
+          <h3 className="text-sm font-semibold mb-3" style={{color:'var(--color-text-secondary)'}}>Tidigare menyer</h3>
+          <div className="space-y-2">
+            {menuHistory.slice(1, 6).map((h, i) => (
+              <div key={i} className="flex items-center justify-between text-xs py-2 px-3 rounded-lg" style={{
+                background: 'var(--color-bg)', border: '1px solid var(--color-border-light)'
+              }}>
+                <div>
+                  <span className="font-medium">{h.store || 'ICA'}</span>
+                  <span className="mx-1.5" style={{color:'var(--color-border)'}}>·</span>
+                  <span>{h.meals} middagar</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-medium">Cirka {Math.round(h.cost)} kr</span>
+                  {h.savings > 0 && <span className="ml-1.5" style={{color:'var(--color-brand)'}}>sparade {Math.round(h.savings)} kr</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Social proof */}
       <section className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm py-6 mb-8 rounded-xl" style={{

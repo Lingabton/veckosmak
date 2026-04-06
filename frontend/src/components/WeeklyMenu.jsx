@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import RecipeCard from './RecipeCard'
 import SavingsBanner from './SavingsBanner'
-import EmailSignup from './EmailSignup'
 
 const DIETS = [
   {v:'vegetarian',l:'Vegetarisk'},{v:'vegan',l:'Vegansk'},{v:'glutenfree',l:'Glutenfri'},
@@ -234,9 +233,6 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
           Din meny och inköpslista sparas automatiskt — du kan stänga appen och öppna den igen i butiken.
         </p>
       </div>
-
-      {/* Email signup */}
-      <EmailSignup context="menu" />
 
       {/* Regenerate */}
       <div className="mt-6 text-center">

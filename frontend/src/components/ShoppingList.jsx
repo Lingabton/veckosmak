@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { loadChecked, saveChecked, loadHaveAtHome, saveHaveAtHome } from '../hooks/useMenu'
 import PricePoll from './PricePoll'
+import EmailSignup from './EmailSignup'
 
 const CATEGORIES = {
   produce: 'Frukt & grönt', meat: 'Kött & chark', fish: 'Fisk & skaldjur',
@@ -259,6 +260,7 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
       </div>
       {/* Price poll — show once per menu */}
       {menu?.id && <PricePoll menuId={menu.id} />}
+      <EmailSignup context="shopping" />
     </section>
   )
 }
