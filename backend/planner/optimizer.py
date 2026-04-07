@@ -149,6 +149,9 @@ def _is_incomplete_recipe(recipe: Recipe) -> bool:
     title_lower = recipe.title.lower()
     if any(kw in title_lower for kw in INCOMPLETE_RECIPE_KEYWORDS):
         return True
+    # Skip single-serving recipes (sallader, mellanmål) — they scale badly
+    if recipe.servings and recipe.servings <= 1:
+        return True
     real_ingredients = [i for i in recipe.ingredients if not i.is_pantry_staple]
     if len(real_ingredients) < 3:
         return True
@@ -409,22 +412,23 @@ def generate_fallback_menu(
     pool = scored[:pool_size]
     random.shuffle(pool)
 
-    # Classify each recipe by its primary protein
+    # Classify each recipe by its primary protein — search ALL ingredients
     def _primary_protein(recipe):
-        for ing in recipe.ingredients:
-            if ing.is_pantry_staple:
-                continue
-            name = ing.name.lower()
-            if 'kyckling' in name: return 'kyckling'
-            if 'lax' in name: return 'lax'
-            if any(x in name for x in ['nötfärs', 'köttfärs', 'blandfärs']): return 'färs'
-            if 'fläsk' in name: return 'fläsk'
-            if 'torsk' in name: return 'torsk'
-            if 'korv' in name: return 'korv'
-            if 'räk' in name: return 'räkor'
-            if 'tofu' in name or 'bönor' in name or 'linser' in name: return 'veg-protein'
-            if ing.category == 'meat': return 'övrigt-kött'
-            if ing.category == 'fish': return 'övrigt-fisk'
+        all_names = " ".join(i.name.lower() for i in recipe.ingredients)
+        # Check specific proteins first (order matters: most specific first)
+        if 'kyckling' in all_names: return 'kyckling'
+        if 'lax' in all_names: return 'lax'
+        if any(x in all_names for x in ['nötfärs', 'köttfärs', 'blandfärs', 'kycklingfärs']): return 'färs'
+        if 'fläsk' in all_names: return 'fläsk'
+        if 'torsk' in all_names: return 'torsk'
+        if 'korv' in all_names or 'falukorv' in all_names: return 'korv'
+        if 'räk' in all_names: return 'räkor'
+        if 'biff' in all_names or 'entrecôte' in all_names or 'oxfilé' in all_names: return 'nötkött'
+        if 'lamm' in all_names: return 'lamm'
+        if 'tofu' in all_names or 'bönor' in all_names or 'linser' in all_names or 'kikärt' in all_names: return 'veg-protein'
+        # Fallback: check categories
+        if any(i.category == 'meat' for i in recipe.ingredients): return 'övrigt-kött'
+        if any(i.category == 'fish' for i in recipe.ingredients): return 'övrigt-fisk'
         return 'vegetarisk'
 
     # Build ingredient fingerprint for overlap scoring (reduce waste)
@@ -463,12 +467,25 @@ def generate_fallback_menu(
         overlap = words & used_title_words
         return len(overlap) / len(words) > 0.5
 
+    # Pre-compute cost per portion for pool — skip outrageously expensive
+    from backend.planner.savings import calculate_meal_cost
+    MAX_PRICE_PER_PORTION = 100  # kr — no recipe should cost more than this per person
+
+    pool_with_cost = []
+    for r, score in pool:
+        scale = _get_servings_scale(r, preferences.household_size)
+        cost_w, _, _ = calculate_meal_cost(r.ingredients, offers, scale)
+        pp = cost_w / max(1, preferences.household_size)
+        if pp > MAX_PRICE_PER_PORTION:
+            continue  # Skip absurdly expensive recipes
+        pool_with_cost.append((r, score))
+
     # First pass: pick by score + overlap, block duplicates
     for round_num in range(preferences.num_dinners):
         best_candidate = None
         best_total_score = -1
 
-        for r, base_score in pool:
+        for r, base_score in pool_with_cost:
             if r.id in used_ids:
                 continue
             if _too_similar(r):

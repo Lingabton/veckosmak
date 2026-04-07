@@ -60,6 +60,10 @@ NON_COOKING_OFFERS = {
     "saft", "juice", "smoothie", "energidryck",
     "kaffe", "te ",
     "glass",
+    # Seasonal/decorative items that match food words
+    "kanin", "påskägg", "påsk", "dekoration", "ljus",
+    "blomm", "bukett", "rosor", "kruka",
+    "leksak", "present", "kort",
 }
 
 
