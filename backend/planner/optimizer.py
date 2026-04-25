@@ -131,10 +131,43 @@ def _get_crowd_rating(recipe: Recipe) -> float:
     return recipe.rating if recipe.rating is not None else 0.0
 
 
-# Skip these — not complete dinners
+# Skip these — title indicates a component, not a full dinner
+# Only words that are unambiguous when found anywhere in a title
 INCOMPLETE_RECIPE_KEYWORDS = [
-    "grundrecept", "bas ", "basen", "sås till", "dressing",
+    "grundrecept", "bas ", "basen", "sås till",
     "marinad", "smör till", "topping", "tillbehör",
+]
+
+# Recipes where the WHOLE dish is not a dinner (match only when title IS the thing)
+# These use startswith or exact match — "Guacamole" is blocked but
+# "Tacos med guacamole" is NOT blocked
+NOT_A_DINNER_EXACT = {
+    # Sides & condiments (only when they ARE the recipe, not a component)
+    "guacamole", "hummus", "tzatziki", "coleslaw", "potatismos",
+    "hasselbackspotatis", "klyftpotatis", "stekt potatis",
+    "rostad potatis", "sushiris", "flatbread",
+    "havregrynsgröt", "risgrynsgröt", "fruktsallad",
+    "koka ägg", "rostad citronpotatis", "bakad potatis",
+    "potatiskaka pommes anna", "gräddsås", "löksås",
+    "dressing", "vinägrett", "inlagd sill",
+}
+
+# These block if they appear ANYWHERE in title
+NOT_A_DINNER_KEYWORDS = [
+    # Baking & desserts
+    "kladdkaka", "tårta", "brownie", "cheesecake", "konfekt",
+    "mousse", "panna cotta", "bavaroise",
+    # Bread (standalone)
+    "knäckebröd", "surdegsbröd", "filmjölksbröd", "fruktbröd",
+    "morotsbröd", "glutenfritt bröd",
+    # Sauces (standalone)
+    "grundrecept", "(grundrecept)",
+    # Preserves
+    "sylt", "marmelad",
+    # Drinks
+    "smoothie", "lemonad",
+    # Snacks
+    "proteinpannkakor", "proteinplättar", "kvargpannkakor",
 ]
 
 
@@ -219,6 +252,19 @@ def _is_incomplete_recipe(recipe: Recipe) -> bool:
     title_lower = recipe.title.lower()
     if any(kw in title_lower for kw in INCOMPLETE_RECIPE_KEYWORDS):
         return True
+    # Block non-dinner recipes: exact title match for sides/condiments
+    title_stripped = title_lower.strip()
+    if title_stripped in NOT_A_DINNER_EXACT:
+        return True
+    # Block non-dinner recipes: keyword match for baking, sauces, etc.
+    if any(kw in title_lower for kw in NOT_A_DINNER_KEYWORDS):
+        return True
+    # Nutrition-based filter: if we have data and it's very low cal + low protein, skip
+    if recipe.nutrition and recipe.nutrition.calories and recipe.nutrition.protein:
+        if recipe.nutrition.calories < 250 and recipe.nutrition.protein < 10:
+            # Exception: soups and salads can be low-cal but valid
+            if not any(kw in title_lower for kw in ['soppa', 'sallad', 'bowl']):
+                return True
     # Skip single-serving recipes (sallader, mellanmål) — they scale badly
     if recipe.servings and recipe.servings <= 1:
         return True
