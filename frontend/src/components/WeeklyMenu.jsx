@@ -41,7 +41,7 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
         </button>
         <button onClick={onShowShopping}
           className="text-sm font-medium px-4 py-1.5 rounded-full text-white"
-          style={{ backgroundColor: 'var(--accent)' }}>
+          style={{ backgroundColor: 'var(--color-accent)' }}>
           Inköpslista
         </button>
       </div>
@@ -194,15 +194,22 @@ export default function WeeklyMenu({ menu, onSwap, swapping, onShowShopping, onB
                             <span className="block text-xs font-medium" style={{ color: 'var(--color-brand)' }}>{offer.discount} % rabatt</span>
                           )}
                         </div>
-                        <button onClick={() => {
+                        <button onClick={(e) => {
                           const custom = JSON.parse(localStorage.getItem('veckosmak_custom_items') || '[]')
                           const name = `${offer.product_name}${offer.brand ? ' ('+offer.brand+')' : ''}`
                           if (!custom.includes(name)) {
                             custom.push(name)
                             localStorage.setItem('veckosmak_custom_items', JSON.stringify(custom))
+                            const btn = e.currentTarget
+                            btn.textContent = '✓'
+                            btn.style.background = 'var(--color-brand-light)'
+                            btn.style.color = 'var(--color-brand)'
+                            btn.style.borderColor = 'var(--color-brand)'
+                            setTimeout(() => { btn.textContent = '+'; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '' }, 1500)
                           }
                         }}
                           className="stepper-btn text-sm" style={{width:32,height:32,fontSize:16}}
+                          aria-label={`Lägg till ${offer.product_name} på inköpslistan`}
                           title="Lägg till på inköpslistan">+</button>
                       </div>
                     </div>

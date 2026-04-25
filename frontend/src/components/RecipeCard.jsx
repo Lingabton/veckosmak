@@ -418,11 +418,13 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
                   }}>
                     {i + 1}
                   </span>
-                  <span style={{ color: 'var(--color-text-secondary)' }} dangerouslySetInnerHTML={{
-                    __html: step
-                      .replace(/(\d+\s*(?:min|minuter|sekunder|timmar?))/gi, '<b>$1</b>')
-                      .replace(/(Stek|Koka|Vispa|Hacka|Skala|Skär|Blanda|Rör|Tillsätt|Häll|Stek|Grilla|Ugn|Sjud|Smält)/g, '<b>$1</b>')
-                  }} />
+                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                    {step.split(/(\d+\s*(?:min|minuter|sekunder|timmar?)|(?:Stek|Koka|Vispa|Hacka|Skala|Skär|Blanda|Rör|Tillsätt|Häll|Grilla|Ugn|Sjud|Smält))/gi).map((part, pi) =>
+                      /^(\d+\s*(?:min|minuter|sekunder|timmar?)|Stek|Koka|Vispa|Hacka|Skala|Skär|Blanda|Rör|Tillsätt|Häll|Grilla|Ugn|Sjud|Smält)$/i.test(part)
+                        ? <b key={pi}>{part}</b>
+                        : part
+                    )}
+                  </span>
                 </li>
               ))}
             </ol>

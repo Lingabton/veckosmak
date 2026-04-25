@@ -68,9 +68,9 @@ function StoreSelector({ preferences, update }) {
                 style={{borderColor:'var(--color-border-light)',background:id===preferences.store_id?'var(--color-brand-light)':'transparent'}}>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{
-                    background: id.startsWith('willys') ? '#e8371f' : 'var(--color-brand)',
+                    background: id.startsWith('willys') ? '#e8371f' : id.startsWith('coop') ? '#00aa46' : 'var(--color-brand)',
                     color: 'white',
-                  }}>{id.startsWith('willys') ? 'W' : 'ICA'}</span>
+                  }}>{id.startsWith('willys') ? 'W' : id.startsWith('coop') ? 'Coop' : 'ICA'}</span>
                   <div>
                     <span className="text-sm font-medium">{s.name || s.city}</span>
                     <span className="text-xs ml-2 font-medium" style={{color:typeColor[s.type]||'var(--color-text-muted)'}}>{typeLabel[s.type]}</span>
@@ -135,7 +135,7 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
 
       {/* === SECTION 1: Hero === */}
       <section className="-mx-5 -mt-8 px-5 pt-16 pb-12 mb-12 rounded-b-3xl" style={{
-        background: 'radial-gradient(ellipse at 50% 20%, #2d8a56 0%, #1a5c35 60%, var(--color-brand-dark) 100%)',
+        background: 'radial-gradient(ellipse at 50% 30%, #3a9d64 0%, #2d8a56 35%, #1a5c35 65%, var(--color-brand-dark) 100%)',
       }}>
         <h1 className="font-display text-4xl sm:text-5xl font-bold leading-[1.1] mb-5 text-white" style={{ letterSpacing: '-0.03em' }}>
           Från erbjudande till{' '}
@@ -149,7 +149,7 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
           Bygg veckans meny från butikens riktiga kampanjer. Recept, inköpslista och besparing — klar direkt.
         </p>
         <div className="flex flex-wrap items-center gap-3 mt-8">
-          {['Butiksspecifika erbjudanden','Färdig inköpslista','1300+ recept'].map(pill => (
+          {['ICA · Willys · Coop','Färdig inköpslista','1 350+ recept'].map(pill => (
             <span key={pill} className="text-sm px-4 py-2 rounded-full text-white" style={{
               background: 'rgba(255,255,255,0.1)',
               backdropFilter: 'blur(8px)',
@@ -212,7 +212,7 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
           {/* Connecting line on desktop */}
           <div className="hidden sm:block absolute top-6 left-[16.67%] right-[16.67%] h-px" style={{background:'var(--color-border)'}} />
           {[
-            {n:'1',t:'Vi läser erbjudanden',d:'Från din valda butik — ICA eller Willys',color:'var(--color-brand)'},
+            {n:'1',t:'Vi läser erbjudanden',d:'Från din valda butik — ICA, Willys eller Coop',color:'var(--color-brand)'},
             {n:'2',t:'Vi bygger middagar',d:'Anpassat till ditt hushåll och kostpreferenser',color:'var(--color-accent)'},
             {n:'3',t:'Du får veckan klar',d:'Meny, recept och inköpslista direkt',color:'var(--color-gold)'},
           ].map((s, i) => (
@@ -234,17 +234,17 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
           <div>
             <label className="block text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Antal personer</label>
             <div className="flex items-center gap-3">
-              <button className="stepper-btn" onClick={()=>update('household_size',Math.max(1,preferences.household_size-1))}>−</button>
-              <span className="text-2xl font-bold w-8 text-center">{preferences.household_size}</span>
-              <button className="stepper-btn" onClick={()=>update('household_size',Math.min(8,preferences.household_size+1))}>+</button>
+              <button className="stepper-btn" aria-label="Minska antal personer" onClick={()=>update('household_size',Math.max(1,preferences.household_size-1))}>−</button>
+              <span className="text-2xl font-bold w-8 text-center" aria-live="polite">{preferences.household_size}</span>
+              <button className="stepper-btn" aria-label="Öka antal personer" onClick={()=>update('household_size',Math.min(8,preferences.household_size+1))}>+</button>
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-2" style={{color:'var(--color-text-secondary)'}}>Middagar</label>
             <div className="flex items-center gap-3">
-              <button className="stepper-btn" onClick={()=>update('num_dinners',Math.max(1,preferences.num_dinners-1))}>−</button>
-              <span className="text-2xl font-bold w-8 text-center">{preferences.num_dinners}</span>
-              <button className="stepper-btn" onClick={()=>update('num_dinners',Math.min(7,preferences.num_dinners+1))}>+</button>
+              <button className="stepper-btn" aria-label="Minska antal middagar" onClick={()=>update('num_dinners',Math.max(1,preferences.num_dinners-1))}>−</button>
+              <span className="text-2xl font-bold w-8 text-center" aria-live="polite">{preferences.num_dinners}</span>
+              <button className="stepper-btn" aria-label="Öka antal middagar" onClick={()=>update('num_dinners',Math.min(7,preferences.num_dinners+1))}>+</button>
             </div>
           </div>
         </div>
@@ -358,7 +358,7 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
           Testa Veckosmak gratis
         </button>
         <p className="text-xs mt-3" style={{color:'var(--color-text-muted)'}}>
-          1 300+ ICA-butiker · 600+ recept med betyg · Helt gratis
+          1 300+ butiker · 1 350+ recept med betyg · Helt gratis
         </p>
       </section>
 
@@ -391,9 +391,9 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
         background: 'var(--color-bg)', color: 'var(--color-text-muted)',
         border: '1px solid var(--color-border-light)',
       }}>
-        <span><b style={{color:'var(--color-text)'}}>1 286</b> butiker</span>
+        <span><b style={{color:'var(--color-text)'}}>1 321</b> butiker</span>
         <span><b style={{color:'var(--color-text)'}}>1 352</b> recept</span>
-        <span><b style={{color:'var(--color-text)'}}>3</b> receptkällor</span>
+        <span><b style={{color:'var(--color-text)'}}>3</b> kedjor</span>
         <span>Helt gratis</span>
       </section>
 
@@ -401,7 +401,7 @@ export default function PreferencesForm({ preferences, setPreferences, goToOffer
       <section className="space-y-4 text-sm" style={{color:'var(--color-text-muted)'}}>
         <div>
           <h2 className="text-base font-bold mb-1" style={{color:'var(--color-text)'}}>Gör veckans erbjudanden användbara</h2>
-          <p>Veckosmak matchar butikens aktuella kampanjer med middagar som passar ditt hushåll. Resultatet är en färdig vecka med recept och inköpslista.</p>
+          <p>Veckosmak matchar erbjudanden från ICA, Willys och Coop med middagar som passar ditt hushåll. Resultatet är en färdig vecka med recept och inköpslista.</p>
         </div>
         <div>
           <h2 className="text-base font-bold mb-1" style={{color:'var(--color-text)'}}>Se vad veckan kostar</h2>

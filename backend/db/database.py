@@ -167,12 +167,6 @@ async def _pg_init():
                 id SERIAL PRIMARY KEY, menu_id TEXT, day TEXT, action TEXT,
                 details TEXT, created_at TIMESTAMP DEFAULT NOW()
             );
-            CREATE TABLE IF NOT EXISTS price_history (
-                id SERIAL PRIMARY KEY, store_id TEXT, product_name TEXT NOT NULL,
-                brand TEXT, category TEXT, offer_price REAL NOT NULL,
-                original_price REAL, unit TEXT, quantity_deal TEXT,
-                valid_from DATE, valid_to DATE, scraped_at TIMESTAMP DEFAULT NOW()
-            );
             CREATE TABLE IF NOT EXISTS recipe_stats (
                 recipe_id TEXT PRIMARY KEY, times_selected INTEGER DEFAULT 0,
                 times_swapped_away INTEGER DEFAULT 0, times_liked INTEGER DEFAULT 0,
@@ -299,6 +293,7 @@ async def save_offers(offers: list[Offer]):
 
 
 async def save_recipes(recipes: list[Recipe]):
+    invalidate_recipe_cache()
     if _is_postgres():
         pool = await _pg_get_pool()
         async with pool.acquire() as conn:
@@ -345,18 +340,38 @@ def _parse_row(r: dict) -> dict:
     return r
 
 
+_recipe_cache: list[dict] | None = None
+_recipe_cache_time: float = 0.0
+_RECIPE_CACHE_TTL = 300.0  # 5 minutes
+
 async def get_all_recipes() -> list[dict]:
+    global _recipe_cache, _recipe_cache_time
+    import time
+    now = time.time()
+    if _recipe_cache is not None and now - _recipe_cache_time < _RECIPE_CACHE_TTL:
+        return _recipe_cache
+
     if _is_postgres():
         pool = await _pg_get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch("SELECT * FROM recipes")
-            return [_parse_row(dict(r)) for r in rows]
+            result = [_parse_row(dict(r)) for r in rows]
     else:
         import aiosqlite
         async with aiosqlite.connect(DB_PATH) as db:
             db.row_factory = aiosqlite.Row
             rows = await db.execute("SELECT * FROM recipes")
-            return [_parse_row(dict(row)) async for row in rows]
+            result = [_parse_row(dict(row)) async for row in rows]
+
+    _recipe_cache = result
+    _recipe_cache_time = now
+    return result
+
+
+def invalidate_recipe_cache():
+    global _recipe_cache, _recipe_cache_time
+    _recipe_cache = None
+    _recipe_cache_time = 0.0
 
 
 async def get_current_offers(store_id: str, category: Optional[str] = None, fallback_days: int = 14) -> list[dict]:

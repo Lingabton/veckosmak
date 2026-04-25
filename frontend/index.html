@@ -6,7 +6,7 @@
 
     <!-- Primary SEO -->
     <title>Veckosmak — Från erbjudande till riktig middag | Bygg veckomeny från butikens kampanjer</title>
-    <meta name="description" content="Veckosmak gör butikens erbjudanden användbara. Bygg veckans meny från riktiga kampanjer och få inköpslistan klar direkt. 1 300+ ICA- och Willys-butiker. Helt gratis." />
+    <meta name="description" content="Veckosmak gör butikens erbjudanden användbara. Bygg veckans meny från riktiga kampanjer och få inköpslistan klar direkt. 1 300+ ICA-, Willys- och Coop-butiker. Helt gratis." />
     <meta name="keywords" content="veckomeny, menyplanering, matplanering, veckans erbjudanden, ICA erbjudanden, ICA Maxi, spara pengar mat, recept vecka, inköpslista, middagstips, billig mat, budgetmat, matbudget, familjemat, vardagsmat Sverige, matkasse alternativ" />
     <meta name="author" content="Veckosmak" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -21,7 +21,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Veckosmak" />
     <meta property="og:title" content="Veckosmak — Från erbjudande till riktig middag" />
-    <meta property="og:description" content="Bygg veckans meny från butikens riktiga erbjudanden. Se vad veckan kostar, få recept och inköpslista klar direkt. 1 300+ ICA- och Willys-butiker." />
+    <meta property="og:description" content="Bygg veckans meny från butikens riktiga erbjudanden. Se vad veckan kostar, få recept och inköpslista klar direkt. 1 300+ ICA-, Willys- och Coop-butiker." />
     <meta property="og:url" content="https://veckosmak.vercel.app/" />
     <meta property="og:image" content="https://veckosmak.vercel.app/og-image.svg" />
     <meta property="og:image:width" content="1200" />
@@ -31,7 +31,7 @@
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Veckosmak — Gratis veckomeny med veckans erbjudanden" />
-    <meta name="twitter:description" content="Spara pengar varje vecka med en personlig veckomeny. 1 300 butiker. 1 350+ recept med betyg. Helt gratis." />
+    <meta name="twitter:description" content="Spara pengar varje vecka med en personlig veckomeny. ICA, Willys och Coop. 1 350+ recept med betyg. Helt gratis." />
     <meta name="twitter:image" content="https://veckosmak.vercel.app/og-image.svg" />
 
     <!-- Additional SEO -->
@@ -99,7 +99,7 @@
           "name": "Vilka butiker stöds?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Veckosmak stödjer över 1 300 ICA- och Willys-butiker i hela Sverige, från Haparanda i norr till Trelleborg i söder. Välj din butik och få lokala erbjudanden."
+            "text": "Veckosmak stödjer över 1 300 ICA-, Willys- och Coop-butiker i hela Sverige, från Haparanda i norr till Trelleborg i söder. Välj din butik och få lokala erbjudanden."
           }
         },
         {
@@ -122,6 +122,18 @@
     }
     </script>
 
+    <!-- JSON-LD: Breadcrumb for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Veckosmak", "item": "https://veckosmak.vercel.app/" },
+        { "@type": "ListItem", "position": 2, "name": "Skapa veckomeny", "item": "https://veckosmak.vercel.app/#meny" }
+      ]
+    }
+    </script>
+
     <!-- Fonts: Outfit (geometric, modern) + Fraunces (distinctive serif for accents) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,6 +143,7 @@
     <script data-goatcounter="https://veckosmak.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
   </head>
   <body>
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg focus:text-green-800 focus:font-semibold">Hoppa till innehåll</a>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

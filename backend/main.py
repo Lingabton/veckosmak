@@ -58,8 +58,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # In-memory cache for generated menus
@@ -74,8 +74,17 @@ RATE_LIMIT_WINDOW = 3600  # 1 hour
 RATE_LIMIT_MAX = settings.max_menu_generations_per_hour
 
 
+_rate_limit_last_cleanup = 0.0
+
 def _check_rate_limit(client_ip: str):
+    global _rate_limit_last_cleanup
     now = time.time()
+    # Periodic cleanup of stale IPs (every 10 minutes)
+    if now - _rate_limit_last_cleanup > 600:
+        stale_ips = [ip for ip, ts in _rate_limit.items() if not ts or now - max(ts) > RATE_LIMIT_WINDOW]
+        for ip in stale_ips:
+            del _rate_limit[ip]
+        _rate_limit_last_cleanup = now
     timestamps = _rate_limit[client_ip]
     # Remove old entries
     _rate_limit[client_ip] = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
@@ -148,8 +157,8 @@ async def cron_scrape(key: str = ""):
     try:
         offers = await scraper.fetch_offers("ica-maxi-1004097")
     except Exception as e:
-        logger.error(f"Cron scrape failed: {e}")
-        return {"status": "error", "detail": str(e)}
+        logger.error(f"Cron scrape failed: {e}", exc_info=True)
+        return {"status": "error", "detail": "Scraping failed — check server logs"}
 
     if offers:
         await save_offers(offers)
@@ -241,7 +250,10 @@ async def list_offers(store_id: str = "ica-maxi-1004097", category: str | None =
 
 
 @app.post("/api/offers/scrape")
-async def scrape_offers(store_id: str = "ica-maxi-1004097"):
+async def scrape_offers(store_id: str = "ica-maxi-1004097", request: Request = None):
+    # Rate limit scrape requests to prevent abuse
+    if request:
+        _check_rate_limit(request.client.host)
     scraper = get_scraper_for_store(store_id)
     try:
         offers = await scraper.fetch_offers(store_id)

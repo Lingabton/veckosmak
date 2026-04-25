@@ -66,7 +66,7 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-5 py-8 flex-1 w-full">
+      <main id="main-content" className="max-w-2xl mx-auto px-5 py-8 flex-1 w-full">
         {/* ── Error banner ── glass morphism red */}
         {error && (
           <div className="fade-in mb-6 p-4 rounded-2xl relative overflow-hidden" style={{
@@ -78,7 +78,7 @@ function App() {
           }}>
             <p className="text-sm font-medium" style={{ color: '#a32222' }}>{error}</p>
             <button onClick={generateMenu} className="text-sm font-semibold mt-2 underline underline-offset-2 transition-opacity hover:opacity-70" style={{ color: '#a32222' }}>
-              Forsok igen
+              Försök igen
             </button>
           </div>
         )}
@@ -141,7 +141,9 @@ function App() {
             <span className="opacity-30">&middot;</span>
             <span>Willys</span>
             <span className="opacity-30">&middot;</span>
-            <span>1300+ recept</span>
+            <span>Coop</span>
+            <span className="opacity-30">&middot;</span>
+            <span>1 350+ recept</span>
             <span className="opacity-30">&middot;</span>
             <span>{new Date().getFullYear()}</span>
           </span>

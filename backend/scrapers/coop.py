@@ -22,8 +22,10 @@ from backend.scrapers.ica_maxi import classify_category
 
 logger = logging.getLogger(__name__)
 
+import os
+
 DKE_BASE_URL = "https://external.api.coop.se/dke/offers"
-DKE_KEY = "32895bd5b86e4a5ab6e94fb0bc8ae234"
+DKE_KEY = os.environ.get("COOP_DKE_KEY", "32895bd5b86e4a5ab6e94fb0bc8ae234")
 
 COOP_STORES: dict[str, dict] = {
     "coop-206403": {"name": "Coop Eken Gävle", "city": "Gävle", "type": "coop", "dke_id": "206403"},

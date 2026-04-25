@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 
 const STEPS = [
   { text: 'Analyserar 198 erbjudanden...', icon: '🏷️' },
-  { text: 'Matchar 1300+ recept mot dina preferenser...', icon: '🔍' },
+  { text: 'Matchar 1 350+ recept mot dina preferenser...', icon: '🔍' },
   { text: 'AI skapar din perfekta vecka...', icon: '✨' },
-  { text: 'Optimerar for basta pris...', icon: '💰' },
+  { text: 'Optimerar för bästa pris...', icon: '💰' },
 ]
 
 const FLOATING_EMOJIS = ['🥕', '🍋', '🧅', '🫒', '🌿', '🍅', '🥑', '🍳']

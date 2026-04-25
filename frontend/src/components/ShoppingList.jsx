@@ -154,7 +154,9 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
                 {catItems.map((item, i) => {
                   const isChecked = !!checked[item.ingredient_name]
                   return (
-                    <div key={i} onClick={() => toggle(item.ingredient_name)}
+                    <div key={i} role="checkbox" aria-checked={isChecked} tabIndex={0}
+                      onClick={() => toggle(item.ingredient_name)}
+                      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(item.ingredient_name) } }}
                       className={`flex items-center gap-3 py-4 px-4 cursor-pointer transition-all ${
                         i > 0 ? 'border-t' : ''
                       } ${isChecked ? 'opacity-35' : ''}`}
@@ -258,6 +260,46 @@ export default function ShoppingList({ menu, onBack, copySuccess, onCopy }) {
           </button>
         </div>
       </div>
+      {/* Cumulative savings motivation */}
+      {(() => {
+        try {
+          const total = parseFloat(localStorage.getItem('veckosmak_total_savings') || '0')
+          if (total > 50) return (
+            <div className="card p-5 mt-6 text-center">
+              <p className="text-xs uppercase tracking-widest font-medium mb-1" style={{color:'var(--color-text-muted)'}}>Totalt sparat med Veckosmak</p>
+              <p className="font-display text-3xl font-bold" style={{
+                background: 'linear-gradient(135deg, #16a34a, var(--color-gold))',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              }}>{Math.round(total)} kr</p>
+              <p className="text-xs mt-1" style={{color:'var(--color-text-muted)'}}>jämfört med ordinarie pris</p>
+            </div>
+          )
+          return null
+        } catch { return null }
+      })()}
+
+      {/* Premium teaser — subtle, after content */}
+      <div className="card p-5 mt-6" style={{background:'var(--color-bg)', border:'1px dashed var(--color-border)'}}>
+        <p className="text-sm font-semibold mb-1">Gillar du Veckosmak?</p>
+        <p className="text-xs mb-3" style={{color:'var(--color-text-muted)'}}>
+          Vi jobbar på Premium med PDF-export, menyhistorik och prisövervakning. Hjälp oss prioritera — vad vill du ha?
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          {['PDF-export','Menyhistorik','Prisövervakning','Veckomail'].map(f => (
+            <button key={f} onClick={() => {
+              try {
+                const votes = JSON.parse(localStorage.getItem('veckosmak_feature_votes') || '[]')
+                if (!votes.includes(f)) {
+                  votes.push(f)
+                  localStorage.setItem('veckosmak_feature_votes', JSON.stringify(votes))
+                }
+              } catch {}
+            }}
+              className="btn-pill text-xs">{f}</button>
+          ))}
+        </div>
+      </div>
+
       {/* Price poll — show once per menu */}
       {menu?.id && <PricePoll menuId={menu.id} />}
       <EmailSignup context="shopping" />
