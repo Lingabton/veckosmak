@@ -146,20 +146,25 @@ NOT_A_DINNER_EXACT = {
     "guacamole", "hummus", "tzatziki", "coleslaw", "potatismos",
     "hasselbackspotatis", "klyftpotatis", "stekt potatis",
     "rostad potatis", "sushiris", "flatbread",
-    "havregrynsgröt", "risgrynsgröt", "fruktsallad",
+    "havregrynsgröt", "risgrynsgröt", "risgrynsgröt i ugn", "fruktsallad",
     "koka ägg", "rostad citronpotatis", "bakad potatis",
     "potatiskaka pommes anna", "gräddsås", "löksås",
     "dressing", "vinägrett", "inlagd sill",
+    "risgrynspudding", "risgrynspudding med saftsås",
+    "färskpotatissallad", "bröd med havregryn",
 }
 
 # These block if they appear ANYWHERE in title
 NOT_A_DINNER_KEYWORDS = [
     # Baking & desserts
     "kladdkaka", "tårta", "brownie", "cheesecake", "konfekt",
-    "mousse", "panna cotta", "bavaroise",
+    "mousse", "panna cotta", "bavaroise", "muffins",
+    "risgrynspudding", "pudding",
     # Bread (standalone)
     "knäckebröd", "surdegsbröd", "filmjölksbröd", "fruktbröd",
     "morotsbröd", "glutenfritt bröd",
+    # Breakfast
+    "gröt", "müsli",
     # Sauces (standalone)
     "grundrecept", "(grundrecept)",
     # Preserves
@@ -168,6 +173,7 @@ NOT_A_DINNER_KEYWORDS = [
     "smoothie", "lemonad",
     # Snacks
     "proteinpannkakor", "proteinplättar", "kvargpannkakor",
+    "amerikanska pannkakor",
 ]
 
 
@@ -329,6 +335,31 @@ def _recipe_makes_ready_made(recipe: Recipe, offers: list[Offer]) -> bool:
     return False
 
 
+def _has_meat_or_fish_by_name(ingredients: list[Ingredient]) -> tuple[bool, bool]:
+    """Detect meat/fish even when category is wrong (e.g., 'stekfläsk' with category='other').
+    Returns (has_meat, has_fish)."""
+    MEAT_NAMES = [
+        "fläsk", "kött", "nöt", "kalv", "lamm", "vilt", "hjort", "älg", "ren",
+        "bacon", "skinka", "kassler", "korv", "salami", "chorizo", "pancetta",
+        "prosciutto", "kyckl", "höns", "anka", "kalkon", "lever",
+    ]
+    FISH_NAMES = [
+        "lax", "torsk", "sej", "räk", "kräft", "mussla", "pilgrim", "sill",
+        "strömming", "fisk", "tonfisk", "rödspätta", "abborre", "gädda",
+        "hummer", "bläckfisk", "sardell", "ansjov", "makrill", "öring",
+        "röding", "hälleflundra", "sjötunga", "piggvar",
+    ]
+    has_meat = False
+    has_fish = False
+    for i in ingredients:
+        n = i.name.lower()
+        if i.category == "meat" or any(m in n for m in MEAT_NAMES):
+            has_meat = True
+        if i.category == "fish" or any(f in n for f in FISH_NAMES):
+            has_fish = True
+    return has_meat, has_fish
+
+
 def filter_recipes_by_preferences(
     recipes: list[Recipe], prefs: UserPreferences
 ) -> list[Recipe]:
@@ -338,12 +369,13 @@ def filter_recipes_by_preferences(
         # Skip incomplete recipes (grundrecept, sauces, etc.)
         if _is_incomplete_recipe(r):
             continue
-        # Dietary restrictions
+        # Dietary restrictions — use name-based detection for accuracy
+        has_meat, has_fish = _has_meat_or_fish_by_name(r.ingredients)
         if "vegetarian" in prefs.dietary_restrictions:
-            if any(i.category == "meat" for i in r.ingredients):
+            if has_meat or has_fish:
                 continue
         if "vegan" in prefs.dietary_restrictions:
-            if any(i.category in ("meat", "fish", "dairy") for i in r.ingredients):
+            if has_meat or has_fish or any(i.category == "dairy" for i in r.ingredients):
                 continue
         if "glutenfree" in prefs.dietary_restrictions:
             if "glutenfree" not in r.diet_labels and any(
