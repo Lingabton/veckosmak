@@ -157,6 +157,17 @@ export default function RecipeCard({ meal, onSwap, swapping, onFeedback, forceEx
             )}
           </div>
 
+          {/* Side suggestion — always visible if present */}
+          {side_suggestion && (
+            <p className="text-xs mt-2 px-3 py-1.5 rounded-lg inline-block" style={{
+              background: '#fefce8',
+              color: '#854d0e',
+              border: '1px solid #fef08a',
+            }}>
+              <span className="font-semibold">Tillbehör:</span> {side_suggestion}
+            </p>
+          )}
+
           {/* Price row */}
           <div className="flex items-end justify-between mt-3.5">
             <div className="flex items-baseline gap-3">

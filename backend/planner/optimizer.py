@@ -144,6 +144,76 @@ CARB_SOURCES = [
     "tacos", "pizza", "pie", "paj", "gratäng", "lasagne", "risotto",
 ]
 
+VEGGIE_KEYWORDS = [
+    "sallad", "tomat", "gurka", "paprika", "broccoli", "spenat", "morot",
+    "zucchini", "böna", "ärtor", "sparris", "kål", "blomkål", "rucola",
+    "avokado", "majs", "rödkål", "vitkål",
+]
+
+SELF_CONTAINED_KEYWORDS = [
+    'soppa', 'gryta', 'wok', 'sallad', 'bowl', 'burrito', 'kebab',
+    'pannkak', 'omelett', 'paj', 'gratäng', 'lasagne', 'risotto', 'curry',
+    'stuvning', 'pytt', 'pizza', 'tacos', 'wraps',
+]
+
+
+def _suggest_side(recipe: Recipe) -> str:
+    """Suggest side dishes for recipes that are just protein without accompaniment.
+
+    Returns empty string if recipe is already a complete meal.
+    """
+    title_lower = recipe.title.lower()
+    all_text = f"{title_lower} {' '.join(i.name.lower() for i in recipe.ingredients)}"
+
+    # Self-contained dishes don't need sides
+    if any(kw in title_lower for kw in SELF_CONTAINED_KEYWORDS):
+        return ""
+
+    has_carb = any(c in all_text for c in CARB_SOURCES)
+    veggie_count = sum(1 for v in VEGGIE_KEYWORDS if v in all_text)
+    has_veggies = veggie_count >= 2
+
+    # Already complete
+    if has_carb and has_veggies:
+        return ""
+
+    # Determine protein type for contextual suggestion
+    is_fish = any(i.category == "fish" for i in recipe.ingredients)
+    is_meat = any(i.category == "meat" for i in recipe.ingredients)
+
+    parts = []
+
+    if not has_carb:
+        # Suggest carb based on protein type
+        if is_fish:
+            options = ["kokt potatis", "pressad potatis", "ris", "potatismos"]
+        elif "kyckling" in all_text:
+            options = ["ris", "couscous", "bulgur", "klyftpotatis"]
+        elif any(w in all_text for w in ["fläsk", "karré", "kotlett"]):
+            options = ["potatismos", "kokt potatis", "klyftpotatis", "rostad potatis"]
+        elif any(w in all_text for w in ["färs", "biff", "entrecôte", "rostbiff"]):
+            options = ["klyftpotatis", "potatismos", "rostad potatis", "pommes"]
+        else:
+            options = ["ris", "kokt potatis", "pasta", "bulgur"]
+        import random
+        parts.append(random.choice(options))
+
+    if not has_veggies:
+        # Suggest veggies based on what goes well
+        if is_fish:
+            veg_options = ["grönsallad", "citronklyftad sallad", "ångad broccoli", "tomatsallad"]
+        elif "kyckling" in all_text:
+            veg_options = ["grönsallad", "ugnsrostade grönsaker", "broccoli", "råkostsallad"]
+        else:
+            veg_options = ["grönsallad", "tomatsallad", "ugnsrostade rotfrukter", "kokt broccoli"]
+        import random
+        parts.append(random.choice(veg_options))
+
+    if not parts:
+        return ""
+
+    return f"Servera med {' och '.join(parts)}"
+
 def _is_incomplete_recipe(recipe: Recipe) -> bool:
     """Check if a recipe is just a component, not a full dinner."""
     title_lower = recipe.title.lower()
@@ -538,6 +608,7 @@ def generate_fallback_menu(
                 "recipe_id": r.id,
                 "reasoning": "Automatiskt vald baserat på erbjudanden",
                 "mealprep_tip": "",
+                "side_suggestion": _suggest_side(r),
             }
             for i, r in enumerate(selected)
         ]
