@@ -480,11 +480,10 @@ def generate_fallback_menu(
             continue  # Skip absurdly expensive recipes
         pool_with_cost.append((r, score))
 
-    # First pass: pick by score + overlap, block duplicates
+    # First pass: weighted random selection — high-scoring recipes are more likely
+    # but not guaranteed, ensuring variety across generations
     for round_num in range(preferences.num_dinners):
-        best_candidate = None
-        best_total_score = -1
-
+        candidates = []
         for r, base_score in pool_with_cost:
             if r.id in used_ids:
                 continue
@@ -498,18 +497,28 @@ def generate_fallback_menu(
 
             overlap = _overlap_bonus(r, selected)
             total = base_score + overlap
-            if total > best_total_score:
-                best_total_score = total
-                best_candidate = (r, protein)
+            candidates.append((r, protein, total))
 
-        if best_candidate:
-            r, protein = best_candidate
-            selected.append(r)
-            used_ids.add(r.id)
-            used_proteins.append(protein)
-            used_title_words.update(_title_fingerprint(r))
-        else:
+        if not candidates:
             break
+
+        # Weighted random: score^2 as weight so good recipes are favored but not locked
+        weights = [max(0.1, score ** 2) for _, _, score in candidates]
+        total_weight = sum(weights)
+        rand = random.random() * total_weight
+        cumulative = 0.0
+        chosen = candidates[0]
+        for i, (r, protein, score) in enumerate(candidates):
+            cumulative += weights[i]
+            if cumulative >= rand:
+                chosen = (r, protein, score)
+                break
+
+        r, protein, _ = chosen
+        selected.append(r)
+        used_ids.add(r.id)
+        used_proteins.append(protein)
+        used_title_words.update(_title_fingerprint(r))
 
     # If not enough after variety filter, fill from remaining (relax constraints)
     if len(selected) < preferences.num_dinners:
